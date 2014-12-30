@@ -19,11 +19,15 @@ class StartLineFrame(Frame):
     '''
 
 
-    def __init__(self,master=None,backgroundColour=None):
+    def __init__(self,master=None,backgroundColour=None,fullScreen=False,fontSize=16):
         '''
         Constructor
         '''
-        Frame.__init__(self, master)
+        self.tk = Tk()
+        self.fontSize=fontSize
+        
+        self.tk.attributes('-fullscreen',fullScreen)
+        Frame.__init__(self, self.tk)
         self.backgroundColour=backgroundColour
         self.grid(sticky=N+S+E+W)
         self.createWidgets()
@@ -37,7 +41,7 @@ class StartLineFrame(Frame):
         
         style = Style()
         #style.theme_use('winnative')
-        style.configure('.', font=('Helvetica',16))
+        style.configure('.', font=('Helvetica',self.fontSize))
         style.configure('Treeview',rowheight=30)
         style.configure('TButton')
         
@@ -151,7 +155,7 @@ class StartLineFrame(Frame):
         #
         # Gun and finish
         #
-        self.gunAndFinishButton = Button(self, text="Gun and\nfinish")
+        self.gunAndFinishButton = Button(self, text="Gun\nand\nfinish")
         self.gunAndFinishButton.grid(row=0,column=6,sticky=W+E+N+S)
         
         #
@@ -160,6 +164,13 @@ class StartLineFrame(Frame):
         self.gunButton = Button(self,
                                     text="Gun")
         self.gunButton.grid(row=1,column=6,sticky=W+E+N+S)
+        
+        #
+        # exit button
+        #
+        self.exitButton = Button(self,
+                                 text="Quit")
+        self.exitButton.grid(row=5,column=6,sticky=W+E+N+S)
         
         
         #
@@ -172,7 +183,7 @@ class StartLineFrame(Frame):
         #
         # EasyDaqRelay connection status label
         #
-        self.connectionStatus = StringVar(self,value="Connecting")
+        self.connectionStatus = StringVar(self,value="")
         connectionStatusLabel = Label(self,textvariable=self.connectionStatus,justify=LEFT,anchor=W)
         connectionStatusLabel.grid(row=7,column=0,columnspan=2,sticky=E+W)
         
@@ -258,11 +269,11 @@ class StartLineFrame(Frame):
         self.abandonStartRaceSequenceButton['state'] = NORMAL
         
 class AddFleetDialog:
-    def __init__(self, parent, fleetNamesList):
+    def __init__(self, parent, fleetNamesList,fontSize=16):
         self.top = Toplevel(parent)
         self.frame = Frame(self.top)
         self.frame.pack(fill=BOTH,expand=True)
-        
+        self.fontSize = fontSize
         self.fleetNamesList = fleetNamesList
         self.fleetName = None
         self.createWidgets()
@@ -272,7 +283,7 @@ class AddFleetDialog:
         
     def createWidgets(self):
         style = Style()
-        style.configure('.', font=('Helvetica',16))
+        style.configure('.', font=('Helvetica',self.fontSize))
         style.configure('Treeview',rowheight=30)
         
         label = Label(self.frame, text='Choose from the list:')
@@ -329,6 +340,7 @@ class AddFleetDialog:
         self.top.destroy()
     
     def show(self):
+
         self.focus_set()
         self.grab_set()
         self.transient(self.parent)

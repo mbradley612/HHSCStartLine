@@ -20,7 +20,7 @@ import ConfigParser
 import os
 import pickle
 
-RACES_LIST = ['Large handicap','Small handicap','Toppers','Large and small handicap','Teras','Oppies']
+
 
 
 #
@@ -87,11 +87,11 @@ class LightsController():
                 lights = [LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_OFF]
             elif secondsToStart <= 180 and secondsToStart > 120: 
                 lights = [LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_OFF, LIGHT_OFF]
-            elif secondsToStart <= 120and secondsToStart > 60: 
+            elif secondsToStart <= 120 and secondsToStart > 60: 
                 lights = [LIGHT_ON, LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
             elif secondsToStart <= 60 and secondsToStart > 30: 
                 lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
-            elif secondsToStart <= 30 and (int(secondsToStart) % 2 == 0):
+            elif secondsToStart <= 30 and (int(secondsToStart * 2) % 2 == 0):
                 lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
             else:
                 lights = [LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
@@ -256,8 +256,10 @@ class GunController():
         self.fireGun()
     
     def handleSequenceStartedWithoutWarning(self):
-        # fire a gun straight away
-        self.fireGun()
+        # schedule ten second countdown
+        self.scheduleWarningBeeps(10000)
+        # schedule gun for ten seconds
+        self.scheduleGun(10000)
         
         self.scheduleGunsForFutureFleetStarts()
     
@@ -288,12 +290,16 @@ class GunController():
 class ScreenController():
     pass
 
-    def __init__(self,startLineFrame,raceManager,audioManager,easyDaqRelay,recoveryManager):
+    def __init__(self,startLineFrame,raceManager,audioManager,easyDaqRelay,recoveryManager,defaultFleetNames,fontSize):
         self.startLineFrame = startLineFrame
         self.raceManager = raceManager
         self.audioManager = audioManager
         self.easyDaqRelay = easyDaqRelay
         self.recoveryManager = recoveryManager
+        # needed to pass to add fleet dialog
+        self.defaultFleetNames = defaultFleetNames
+        # needed to pass to add fleet dialog
+        self.fontSize = fontSize
         
         self.selectedFleet = None    
         self.selectedFinish = None
@@ -304,6 +310,7 @@ class ScreenController():
         
         self.wireController()
         self.disableButtons()
+        
         
    
     def disableButtons(self):
@@ -335,6 +342,7 @@ class ScreenController():
         self.startLineFrame.gunButton.config(command=self.gunClicked)
         self.startLineFrame.gunAndFinishButton.config(command=self.gunAndFinishClicked)
         self.startLineFrame.abandonStartRaceSequenceButton.config(command=self.abandonStartRaceSequenceClicked)
+        self.startLineFrame.exitButton.config(command=self.exitClicked)
         self.startLineFrame.master.protocol("WM_DELETE_WINDOW",self.exitClicked)
         
         
@@ -355,21 +363,21 @@ class ScreenController():
              values=(self.renderDeltaToStartTime(aFleet),aFleet.status()))  
             
     def showAddFleetDialog(self):
-        dlg = AddFleetDialog(self.startLineFrame,RACES_LIST)
+        addFleetDialog = AddFleetDialog(self.startLineFrame,self.defaultFleetNames)
         # ... build the window ...
         
         ## Set the focus on dialog window (needed on Windows)
-        dlg.top.focus_set()
+        addFleetDialog.top.focus_set()
         ## Make sure events only go to our dialog
-        dlg.top.grab_set()
+        addFleetDialog.top.grab_set()
         ## Make sure dialog stays on top of its parent window (if needed)
-        dlg.top.transient(self.startLineFrame)
+        addFleetDialog.top.transient(self.startLineFrame)
         # set the position to be relative to the parent
-        dlg.top.geometry("+%d+%d" % (self.startLineFrame.winfo_rootx()+50,
+        addFleetDialog.top.geometry("+%d+%d" % (self.startLineFrame.winfo_rootx()+50,
                                   self.startLineFrame.winfo_rooty()+50))
         ## Display the window and wait for it to close
-        dlg.top.wait_window()
-        return dlg.fleetName
+        addFleetDialog.top.wait_window()
+        return addFleetDialog.fleetName
     
     def addFleetClicked(self):
         fleetName = self.showAddFleetDialog()
@@ -395,9 +403,7 @@ class ScreenController():
         
         
     def generalRecallClicked(self):
-        result = tkMessageBox.askquestion("General Recall","Are you sure?", icon="warning")
-        if result == 'yes':
-            self.raceManager.generalRecall()
+        self.raceManager.generalRecall()
         self.updateButtonStates()
         
     def gunClicked(self):
@@ -579,14 +585,15 @@ class ScreenController():
         self.startLineFrame.after(0, self.updateSessionStateDescription)
         
     def updateSessionStateDescription(self):
-        while self.easyDaqRelay.sessionStateDescriptionQueue.qsize():
-            try:
-                message = self.easyDaqRelay.sessionStateDescriptionQueue.get_nowait()
-                self.startLineFrame.connectionStatus.set(message)
-            except Queue.Empty:
-                # this should never happen. 
-                message = "Lights: No message available"
-                
+        if self.easyDaqRelay:
+            while self.easyDaqRelay.sessionStateDescriptionQueue.qsize():
+                try:
+                    message = self.easyDaqRelay.sessionStateDescriptionQueue.get_nowait()
+                    self.startLineFrame.connectionStatus.set(message)
+                except Queue.Empty:
+                    # this should never happen. 
+                    message = "Lights: No message available"
+                    
     
     #
     # Calculate the integer adjusted seconds to start time. This is counter-intuitive: the
@@ -641,12 +648,14 @@ class ScreenController():
        
         
         #
-        # Ask our race manager if we have a started fleet
+        # Ask our race manager if we have a started fleet and last fleet started was started less than 30 seconds ago
         #
-        if self.raceManager.hasStartedFleet():
+            
+        if self.raceManager.hasStartedFleet() and self.raceManager.lastFleetStarted().adjustedDeltaSecondsToStartTime() < 30.0:
             self.startLineFrame.enableGeneralRecallButton()
         else:
             self.startLineFrame.disableGeneralRecallButton()
+    
             
                   
         #
@@ -684,6 +693,7 @@ class ScreenController():
             self.startLineFrame.disableRemoveFleetButton()
             self.startLineFrame.disableStartRaceSequenceWithoutWarningButton()
             self.startLineFrame.disableStartRaceSequenceWithWarningButton()
+           
         else:
             self.startLineFrame.enableAddFleetButton()
             self.startLineFrame.disableAbandonStartRaceSequenceButton()
@@ -736,8 +746,9 @@ class ScreenController():
     def shutdown(self):
         
         logging.info("Shutting down")
-        self.easyDaqRelay.sendRelayCommand([LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF])
-        self.easyDaqRelay.stop()
+        if self.easyDaqRelay:
+            self.easyDaqRelay.sendRelayCommand([LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF])
+            self.easyDaqRelay.stop()
         
         # delete our recovery file if we have one
         if self.recoveryManager:
@@ -771,9 +782,11 @@ if __name__ == '__main__':
             
     
     if config.get("Lights","enabled") == 'Y':
+        lightsEnabled = True
         comPort = config.get("Lights","comPort")
         logging.info("Lights enabled on COM port %s" % comPort)
     else:
+        lightsEnabled = False
         logging.info("Lights not enabled")
         
     
@@ -795,7 +808,17 @@ if __name__ == '__main__':
     
     
     backgroundColour = config.get("UserInterface","backgroundColour")        
-    app = StartLineFrame(backgroundColour=backgroundColour)  
+    if config.get("UserInterface","fullScreen") == 'Y':
+        fullScreen = True
+    else:
+        fullScreen = False
+    if config.get("UserInterface","fontSize"):
+        fontSize = int(config.get("UserInterface","fontSize"))
+    else:
+        fontSize = 10
+    app = StartLineFrame(backgroundColour=backgroundColour,fullScreen=fullScreen,fontSize=fontSize)
+    
+      
     #
     # Check for a recovery file. If we have one, ask if we want to recover our race manager
     #
@@ -816,7 +839,7 @@ if __name__ == '__main__':
     logging.info("Setting test speed ratio to %d" % testSpeedRatio)
     easyDaqRelay = None
     
-    if comPort:     
+    if lightsEnabled:     
         from lightsui.hardware import LIGHT_OFF, LIGHT_ON, EasyDaqUSBRelay
         
         easyDaqRelay = EasyDaqUSBRelay(comPort)
@@ -837,7 +860,13 @@ if __name__ == '__main__':
         recoveryThread = threading.Thread(target = recoveryManager.run)
         recoveryThread.daemon = True
         recoveryThread.start()
-    screenController = ScreenController(app,raceManager,audioManager,easyDaqRelay, recoveryManager)
+    if config.get("UserInterface","defaultfleetNames"):
+        # the names of the fleets are split by "," in the config file
+        defaultFleetNames = config.get("UserInterface","defaultfleetNames").split(",")
+    else:
+        defaultFleetNames= []
+    
+    screenController = ScreenController(app,raceManager,audioManager,easyDaqRelay, recoveryManager,defaultFleetNames,fontSize)
     gunController = GunController(app, audioManager, raceManager)
     # check if a recovered raceManager has a started sequence. If so, schedule guns.
     # note, this does not recover the F flag up beeps and gun nor F flag down beeps
@@ -848,7 +877,7 @@ if __name__ == '__main__':
     logging.info("Starting screen controller")             
     screenController.start()
     
-    if comPort:
+    if lightsEnabled:
         lightsController = LightsController(app, easyDaqRelay, raceManager)
         logging.info("Starting lights controller") 
         relayThread.start()

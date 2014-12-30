@@ -312,10 +312,13 @@ class RaceManager:
         logging.info("Start sequence without warning (class flag start)")
         fleetNumber = 0
         now = datetime.now()
+        
+        sequenceStart = now + timedelta(seconds=10)
+        
         for fleet in self.fleets:
             fleetNumber = fleetNumber + 1
             
-            startTime = now + timedelta(
+            startTime = sequenceStart + timedelta(
                 seconds = (START_SECONDS * fleetNumber)/RaceManager.testSpeedRatio)
 
             self.updateFleetStartTime(fleet,startTime)
@@ -354,7 +357,7 @@ class RaceManager:
 
 
     def hasStartedFleet(self):
-        return self.lastFleetStarted()
+        return not self.lastFleetStarted() is None
     
     
     def hasSequenceStarted(self):
