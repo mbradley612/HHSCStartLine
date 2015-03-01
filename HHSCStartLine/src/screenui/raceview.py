@@ -313,6 +313,7 @@ class AddFleetDialog:
         
         
         self.cancelButton = Button(self.frame,text="Cancel",command=self.cancelClicked)
+        
         self.cancelButton.pack()
         self.okButton = Button(self.frame,text="OK",command=self.okClicked)
         self.okButton.pack()
