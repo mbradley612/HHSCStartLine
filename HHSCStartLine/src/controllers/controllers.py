@@ -285,7 +285,9 @@ class GunController():
                 self.scheduleGunForFleetStart(aFleet,0)
                 
        
-    
+
+def f1Pressed(event):
+    print("F1 pressed")     
             
         
 class ScreenController():
@@ -317,6 +319,8 @@ class ScreenController():
     def disableButtons(self):
         self.startLineFrame.disableRemoveFleetButton()
         self.startLineFrame.disableAbandonStartRaceSequenceButton()
+        
+    
 
     def wireController(self):
         self.raceManager.changed.connect("fleetAdded",self.handleFleetAdded)
@@ -345,6 +349,13 @@ class ScreenController():
         self.startLineFrame.abandonStartRaceSequenceButton.config(command=self.abandonStartRaceSequenceClicked)
         self.startLineFrame.exitButton.config(command=self.exitClicked)
         self.startLineFrame.master.protocol("WM_DELETE_WINDOW",self.exitClicked)
+        # bind F1 to gun and finish clicked. 
+        # bind F2 to gun clicked
+        # This is a useful keyboard shortcut and also provides support for additional HID
+        # devices that are configured to keyboard events
+        
+        self.startLineFrame.bind_all("<F1>",self.f1Pressed)
+        self.startLineFrame.bind_all("<F2>",self.f2Pressed)
         
         
         
@@ -431,6 +442,12 @@ class ScreenController():
         self.selectedFinish = self.raceManager.finishWithId(item)
         self.updateButtonStates()
         
+    def f1Pressed(self,event):
+        self.startLineFrame.gunAndFinishButton.invoke()
+        
+    def f2Pressed(self,event):
+        self.startLineFrame.gunButton.invoke()
+    
     def gunAndFinishClicked(self):
         logging.debug("Gun and finish clicked")
         self.raceManager.createFinish()
