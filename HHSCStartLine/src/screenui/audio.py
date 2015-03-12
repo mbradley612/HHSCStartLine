@@ -1,48 +1,59 @@
 '''
 Created on 20 Jan 2014
 
-12 March 2015 
+The audio manager plays audio clips loaded from WAV files asynchronously. As per http://joyrex.spc.uchicago.edu/bookshelves/python/cookbook/pythoncook-CHP-9-SECT-7.html
+Tk should be insulated from any external IO.
 
-Changed to use pygame's mixer because of performance issues with PyAudio/PortAudio on
-Raspberry Pi. No change required to the interface to the AudioManager. 
-See https://github.com/mbradley612/HHSCStartLine/issues/18 
+See http://people.csail.mit.edu/hubert/pyaudio/ for details of PyAudio
 
-There is now a dependency on PyGame. This is installed by default on a Raspberry Pi. On Windows,
-you have to install the MSI installer for PyGame from http://www.pygame.org/download.shtml 
-
-
-We use the pygame mixer in a blocking type pattern, following the recipe at:
-http://code.activestate.com/recipes/521884-play-sound-files-with-pygame-in-a-cross-platform-m/
-
-This means that we can avoid using the pygame event queue - this would require initializing
-the pygame video module which we don't want to do.
+You will need to download PyAudio, see http://people.csail.mit.edu/hubert/pyaudio/#downloads
 
 @author: MBradley
 '''
-import pygame
+import pyaudio
+import wave
 import Queue
+import time
 import logging
 
+from StringIO import StringIO
 
-FREQ = 44100   # same as audio CD
-BITSIZE = -16  # unsigned 16 bit
-CHANNELS = 2   # 1 == mono, 2 == stereo
-BUFFER = 1024  # audio buffer size in no. of samples
-FRAMERATE = 30  # how often to check if playback has finished
+CHUNK=1024
 
 class AudioClip:
     def __init__(self, wavFilename):
-        
-        self.sound = pygame.mixer.Sound(wavFilename)
-        
+        self.wavFilename = wavFilename
+        self.readFileToMemory()
+        self.wavDuration = self.calculateDuration()
+
+    def readFileToMemory(self):
+        # see http://stackoverflow.com/questions/8195544/how-to-play-wav-data-right-from-memory
+        fileOnDisk = open(self.wavFilename,'rb')
+        self.fileInMemory = StringIO(fileOnDisk.read())
+        fileOnDisk.close()
+
+
+    def calculateDuration(self):
+        self.openWav()
+        numberFrames = self.wav.getnframes()
+        rate = self.wav.getframerate()
+        duration = int(1000 * (numberFrames / float(rate)))
+        return duration
+
+    def openWav(self):
+        self.fileInMemory.seek(0)
+        self.wav = wave.open(self.fileInMemory)
+        pass
+                
+
     
-    def play(self):
+    def playOn(self,audioManager):
+        self.openWav()
+        audioManager.playWav(self.wav)
         
-        self.sound.play()
         
-    def duration(self):
-        return self.sound.get_length()
-        
+
+
 
 class AudioManager:
     
@@ -51,15 +62,8 @@ class AudioManager:
     # [('horn','c:\music\horn.wav),('beep','c:\music\beep.wav')]
     #
     def __init__(self, wavFiles):
-        # Initialize the pygame mixer. We do not initialize the whole of
-        # pygame as this means initializing the pygame video system
-        # which we don't need
-        pygame.mixer.init(FREQ, BITSIZE, CHANNELS, BUFFER)
-        
-        self.channel = pygame.mixer.find_channel()
-        self.clock = pygame.time.Clock()
-        
-        
+        # create our instance of PyAudio
+        self.portAudio = pyaudio.PyAudio()
         # create a dictionary of audio clips           
         self.audioClips = {}
         
@@ -79,12 +83,21 @@ class AudioManager:
     def playClip(self,clipName):
         self.isPlaying = True
         logging.debug("Playing wav")
-        self.audioClips[clipName].play()
-        while pygame.mixer.get_busy():
-            
-            self.clock.tick(FRAMERATE)
+        self.audioClips[clipName].playOn(self)
 
-               
+        
+    def playWav(self,wav):
+        stream = self.portAudio.open(format=self.portAudio.get_format_from_width(wav.getsampwidth()),
+                channels=wav.getnchannels(),
+                rate=wav.getframerate(),
+                output=True)
+        data = wav.readframes(CHUNK)
+        while data != '':
+            stream.write(data)
+            data = wav.readframes(CHUNK)
+        stream.stop_stream() 
+        stream.close()
+            
     #
     # The audio manager is designed to run synchronously in its own thread, using a Queue.Queue
     # to queue requests to play audio files using a command pattern.    #
@@ -100,7 +113,7 @@ class AudioManager:
                 # we do nothing if the queue is empty. This should never happen, because we are
                 # blocking for ever.
                 pass
-        pygame.mixer.quit()
+        self.portAudio.terminate()
             
     #
     # This method is called from within the Tkinter event thread.
