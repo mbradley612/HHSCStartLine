@@ -46,7 +46,7 @@ class LightsController():
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
         self.raceManager.changed.connect("sequenceStartedWithWarning",self.handleSequenceStarted)
         self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStarted)
-        self.raceManager.changed.connect("startSequenceAbandoned",self.handleStartSequenceAbandoned)
+        self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
         
         
         
@@ -59,7 +59,7 @@ class LightsController():
         self.cancelUpdateTimer()
         self.updateLights()
         
-    def handleStartSequenceAbandoned(self):
+    def handleStartSequenceReset(self):
         self.cancelUpdateTimer()
         self.updateLights()
         
@@ -157,7 +157,7 @@ class GunController():
         self.raceManager.changed.connect("sequenceStartedWithWarning",self.handleSequenceStartedWithWarning)
         self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStartedWithoutWarning)
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
-        self.raceManager.changed.connect("startSequenceAbandoned",self.handleStartSequenceAbandoned)
+        self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
         self.raceManager.changed.connect("finishAdded", self.handleFinishAdded)
         
         
@@ -270,7 +270,7 @@ class GunController():
         self.cancelSchedules()
         self.scheduleGunsForFutureFleetStarts()
         
-    def handleStartSequenceAbandoned(self):
+    def handleStartSequenceReset(self):
         self.cancelSchedules()
     
     
@@ -318,7 +318,7 @@ class ScreenController():
    
     def disableButtons(self):
         self.startLineFrame.disableRemoveFleetButton()
-        self.startLineFrame.disableAbandonStartRaceSequenceButton()
+        self.startLineFrame.disableResetStartRaceSequenceButton()
         
     
 
@@ -327,6 +327,7 @@ class ScreenController():
         self.raceManager.changed.connect("fleetRemoved",self.handleFleetRemoved)
         self.raceManager.changed.connect("fleetChanged",self.handleFleetChanged)
         self.raceManager.changed.connect("finishAdded",self.handleFinishAdded)
+        self.raceManager.changed.connect("finishRemoved",self.handleFinishRemoved)
         self.raceManager.changed.connect("finishChanged",self.handleFinishChanged)
         self.raceManager.changed.connect("sequenceStartedWithWarning",self.handleSequenceStarted)
         self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStarted)
@@ -346,7 +347,8 @@ class ScreenController():
         self.startLineFrame.generalRecallButton.config(command=self.generalRecallClicked)
         self.startLineFrame.gunButton.config(command=self.gunClicked)
         self.startLineFrame.gunAndFinishButton.config(command=self.gunAndFinishClicked)
-        self.startLineFrame.abandonStartRaceSequenceButton.config(command=self.abandonStartRaceSequenceClicked)
+        self.startLineFrame.resetStartRaceSequenceButton.config(command=self.resetStartRaceSequenceClicked)
+        self.startLineFrame.removeFinishButton.config(command=self.removeFinishClicked)
         self.startLineFrame.exitButton.config(command=self.exitClicked)
         self.startLineFrame.master.protocol("WM_DELETE_WINDOW",self.exitClicked)
         # bind F1 to gun and finish clicked. 
@@ -422,10 +424,10 @@ class ScreenController():
         self.audioManager.queueClip("gun")
 
 
-    def abandonStartRaceSequenceClicked(self):
-        result = tkMessageBox.askquestion("Abandon race sequence","Are you sure?", icon="warning")
+    def resetStartRaceSequenceClicked(self):
+        result = tkMessageBox.askquestion("Reset race sequence","Are you sure? This will remove any finishes.", icon="warning")
         if result == 'yes':
-            self.raceManager.abandonStartSequence()
+            self.raceManager.resetStartSequence()
         self.updateButtonStates()
            
         
@@ -451,6 +453,10 @@ class ScreenController():
     def gunAndFinishClicked(self):
         logging.debug("Gun and finish clicked")
         self.raceManager.createFinish()
+        
+    def removeFinishClicked(self):
+        self.raceManager.removeFinish(self.selectedFinish)
+        self.selectedFinish = None
     
     def handleFleetAdded(self,aFleet):
         self.appendFleetToTreeView(aFleet)
@@ -469,6 +475,9 @@ class ScreenController():
     def handleFinishAdded(self,aFinish):
         self.appendFinishToFinishTreeView(aFinish)
         
+    def handleFinishRemoved(self,aFinish):
+        self.startLineFrame.finishTreeView.delete(aFinish.finishId)
+        
     
     def handleFinishChanged(self,aFinish):
         # update the GUI for a finish
@@ -485,9 +494,11 @@ class ScreenController():
     # When the sequence starts, we create our fleet buttons
     #
     def handleSequenceStarted(self):
+        
         self.createFleetButtons()
         
     def createFleetButtons(self):
+        
         for i in range(len(self.raceManager.fleets)):
             fleet = self.raceManager.fleets[i]
             buttonText = fleet.name.replace(" ","\n")
@@ -706,7 +717,7 @@ class ScreenController():
         #   
         if self.raceManager.hasSequenceStarted() or self.raceManager.hasStartedFleet(): 
             
-            self.startLineFrame.enableAbandonStartRaceSequenceButton()
+            self.startLineFrame.enableResetStartRaceSequenceButton()
             self.startLineFrame.disableAddFleetButton()
             self.startLineFrame.disableRemoveFleetButton()
             self.startLineFrame.disableStartRaceSequenceWithoutWarningButton()
@@ -714,7 +725,7 @@ class ScreenController():
            
         else:
             self.startLineFrame.enableAddFleetButton()
-            self.startLineFrame.disableAbandonStartRaceSequenceButton()
+            self.startLineFrame.disableResetStartRaceSequenceButton()
             
             
             if self.raceManager.hasFleets():

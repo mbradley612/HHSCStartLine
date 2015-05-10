@@ -35,6 +35,7 @@ import logging
 # But we can reduce this for testing
 START_SECONDS=300
 WARNING_SECONDS=300
+LAST_START_GENERAL_RECALL_DELAY=60
 
 class RaceException(Exception):
     def __init__(self, fleet, message):
@@ -368,12 +369,13 @@ class RaceManager:
     
     
     #
-    # Abandon start sequence - set all fleets to no start time, and fire a signal
+    # Reset start sequence - set all fleets to no start time, and fire a signal
     #
-    def abandonStartSequence(self):
+    def resetStartSequence(self):
         for fleet in self.fleets:
             fleet.startTime = None
-        self.changed.fire("startSequenceAbandoned")
+        self.removeAllFinishes()
+        self.changed.fire("startSequenceReset")
 
 
     #
@@ -383,17 +385,16 @@ class RaceManager:
     def generalRecall(self):
         logging.info("General recall")
         fleetToRecall = self.lastFleetStarted()
-
-        # if this is not the last fleet, kick the fleet to the back
-        # of the queue and set its start time to be five minutes
-        # after the last fleet.
         
-        # if this is the last fleet, set its start time to be five
+        
+        
+
+        # if this is the last (or only) fleet, set its start time to be six
         # minutes from now
         if fleetToRecall == self.fleets[-1]:
             logging.info("General recall last fleet")
             self.updateFleetStartTime(fleetToRecall,datetime.now()
-                                 + timedelta(seconds=START_SECONDS/RaceManager.testSpeedRatio))
+                                 + timedelta(seconds=(START_SECONDS+LAST_START_GENERAL_RECALL_DELAY)/RaceManager.testSpeedRatio))
 
         # otherwise kick the fleet to be the back of the queue,
         # with a start time five minutes after the last fleet
@@ -422,6 +423,10 @@ class RaceManager:
             finishTime = datetime.now()
         # create the finish object
         
+        # if we only have one fleet, this will be the fleet for the finish
+        if self.numberFleets() == 1:
+            fleet = self.fleets[0]
+        
         aFinish = Finish(fleet=fleet,finishTime=finishTime,finishId=self.nextFinishId)
         self.incrementNextFinishId()
         
@@ -437,8 +442,17 @@ class RaceManager:
         # fire a change signal
         self.changed.fire("finishAdded",finish)
         
+    def removeFinish(self,finish):
+        self.finishes.remove(finish)
+        del self.finishesById[finish.finishId]
+        self.changed.fire("finishRemoved",finish)
+        
     def updateFinish(self,finish):
         self.changed.fire("finishChanged",finish)
+        
+    def removeAllFinishes(self):
+        for finish in list(self.finishes):
+            self.removeFinish(finish)
         
     def finishWithId(self,finishId):
         if finishId in self.finishesById:

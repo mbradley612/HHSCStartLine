@@ -89,7 +89,7 @@ class StartLineFrame(Frame):
         
         # start race sequence with warning
         self.startRaceSequenceWithWarningButton = Button(self,
-                                        text="F Flag Start",state=DISABLED)
+                                        text="F Flag Start\n  (10 mins)",state=DISABLED)
         self.startRaceSequenceWithWarningButton.grid(row=3,
                                                      column=1,
                                                      sticky=W+E+N+S,
@@ -98,7 +98,7 @@ class StartLineFrame(Frame):
         
         # start race sequence without warning
         self.startRaceSequenceWithoutWarningButton = Button(self,
-                                        text="Class Flag Start",state=DISABLED)
+                                        text="Class Flag Start\n      (5 mins)",state=DISABLED)
         self.startRaceSequenceWithoutWarningButton.grid(row=4,
                                                         column=1,
                                                         sticky=W+E+N+S,
@@ -115,9 +115,9 @@ class StartLineFrame(Frame):
                                       )
         
         # abandon sequence button
-        self.abandonStartRaceSequenceButton = Button(self,
-                                          text="Abandon start",state=DISABLED)
-        self.abandonStartRaceSequenceButton.grid(row=5,
+        self.resetStartRaceSequenceButton = Button(self,
+                                          text="Reset start",state=DISABLED)
+        self.resetStartRaceSequenceButton.grid(row=5,
                                       column=0,
                                       sticky=W+E+N+S,
                                       #ipady=20
@@ -165,11 +165,19 @@ class StartLineFrame(Frame):
                                     text="Gun")
         self.gunButton.grid(row=1,column=6,sticky=W+E+N+S)
         
+        
+        #
+        # remove finish button
+        #
+        self.removeFinishButton = Button(self,
+                                         text="Remove\nfinish")
+        self.removeFinishButton.grid(row=4,column=6,sticky=W+E+N+S)
+        
         #
         # exit button
         #
         self.exitButton = Button(self,
-                                 text="Quit")
+                                 text="Restart")
         self.exitButton.grid(row=5,column=6,sticky=W+E+N+S)
         
         
@@ -262,11 +270,11 @@ class StartLineFrame(Frame):
     def enableStartRaceSequenceWithoutWarningButton(self):
         self.startRaceSequenceWithoutWarningButton['state'] = NORMAL
         
-    def disableAbandonStartRaceSequenceButton(self):
-        self.abandonStartRaceSequenceButton['state'] = DISABLED
+    def disableResetStartRaceSequenceButton(self):
+        self.resetStartRaceSequenceButton['state'] = DISABLED
         
-    def enableAbandonStartRaceSequenceButton(self):
-        self.abandonStartRaceSequenceButton['state'] = NORMAL
+    def enableResetStartRaceSequenceButton(self):
+        self.resetStartRaceSequenceButton['state'] = NORMAL
         
 class AddFleetDialog:
     def __init__(self, parent, fleetNamesList,fontSize=16):
