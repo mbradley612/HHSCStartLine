@@ -377,6 +377,8 @@ class RaceManager:
         self.removeAllFinishes()
         self.changed.fire("startSequenceReset")
 
+    def lastFleet(self):
+        return self.fleets[-1]
 
     #
     # Perform a general recall. This is always for the fleet that

@@ -269,6 +269,12 @@ class GunController():
         self.fireGun()
         self.cancelSchedules()
         self.scheduleGunsForFutureFleetStarts()
+        #
+        # if this is the last (or only) fleet, then schedule a gun 300 seconds with
+        # its warning beeps
+        #
+        if aFleet == self.raceManager.lastFleet():
+            self.scheduleGunForFleetStart(aFleet, 300)
         
     def handleStartSequenceReset(self):
         self.cancelSchedules()
@@ -283,6 +289,7 @@ class GunController():
                 self.scheduleGunForFleetStart(aFleet,240)
                 self.scheduleGunForFleetStart(aFleet,60)
                 self.scheduleGunForFleetStart(aFleet,0)
+        
                 
        
 
