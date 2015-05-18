@@ -290,12 +290,6 @@ class GunController():
                 self.scheduleGunForFleetStart(aFleet,60)
                 self.scheduleGunForFleetStart(aFleet,0)
         
-                
-       
-
-def f1Pressed(event):
-    print("F1 pressed")     
-            
         
 class ScreenController():
     pass
