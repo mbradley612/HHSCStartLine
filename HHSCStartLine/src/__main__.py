@@ -1,6 +1,9 @@
 '''
 Created on 3 Jan 2015
 
+This python module should be deployed in the "root" directory of a zip file. This
+facilitates "running" the zip file, e.g. python startline.zip. 
+
 @author: MBradley
 '''
 from screenui.raceview import StartLineFrame,AddFleetDialog
