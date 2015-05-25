@@ -27,6 +27,7 @@
 from datetime import datetime,timedelta
 from utils import Signal
 import logging
+from wx.lib.masked.maskededit import seconds
 
 
 # As per ISAF rules, start minutes is 5
@@ -102,7 +103,20 @@ class Fleet:
 
     def adjustedDeltaSecondsToStartTime(self):
         return self._deltaToStartTime().total_seconds() * RaceManager.testSpeedRatio
-        
+    
+    
+    #
+    # 
+    #
+    def timeBeforeStart(self,seconds):
+        timeBefore = self.startTime - timedelta(seconds = seconds)
+        return timeBefore
+    
+    def adjustedTimeBeforeStart(self,seconds):
+        adjustedTimeBefore = self.startTime - timedelta(
+                seconds = seconds/RaceManager.testSpeedRatio)
+        return adjustedTimeBefore 
+                        
     #
     # This is the real seconds to start time.
     # 

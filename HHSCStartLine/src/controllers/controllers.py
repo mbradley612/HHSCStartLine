@@ -169,9 +169,12 @@ class GunController():
         self.audioManager.queueClip("warning")
     
     #
-    # millis is the time of the gun. The warning beeps are for the ten secoonds prior to the gun
+    # millis is the time of the gun. The warning beeps are for the ten seconds prior to the gun
     #
     def scheduleWarningBeeps(self,gunMillis,finalWarning=False):
+        #
+        # note, there is no logic here to check that there is enough time for all of the warning beeps.
+        #
         for warningMillis in range(gunMillis-10000, gunMillis, 1000):
             self.addSchedule(self.tkRoot.after(warningMillis, self.soundWarning))
         # if we give a final warning instead of a gun, schedule this
@@ -195,7 +198,7 @@ class GunController():
     
     
         
-    def scheduleGunForFleetStart(self,aFleet, secondsBefore):
+    def calculateGunMillisForFleetStart(self,aFleet, secondsBefore):
         # calculate seconds to start of fleet
         # convert negative seconds to start to positive 
         secondsToStart = aFleet.deltaSecondsToStartTime()  * -1
@@ -220,10 +223,13 @@ class GunController():
             secondsToGun = secondsToStart - secondsBefore / RaceManager.testSpeedRatio
             logging.info("Seconds to start: %d, scheduling gun for %d seconds" % (secondsToStart,secondsToGun))
             gunMillis = int(1000*secondsToGun )
-            self.scheduleWarningBeeps(gunMillis)
             
-            self.scheduleGun(gunMillis)
+            return gunMillis
             
+            
+        
+    def calculateGunTimesForFleetStart(self,aFleet, secondsBefore):
+        return aFleet.adjustedTimeBeforeStart(secondsBefore)
          
         
     
@@ -247,7 +253,7 @@ class GunController():
         
         # schedule guns for the first fleet
         
-        self.scheduleGunForFleetStart(self.raceManager.fleets[0],300)
+        #self.scheduleGunForFleetStart(self.raceManager.fleets[0],300)
         
         # schedule guns for future fleets
         
@@ -258,38 +264,53 @@ class GunController():
     
     def handleSequenceStartedWithoutWarning(self):
         # schedule ten second countdown
-        self.scheduleWarningBeeps(10000)
+        #self.scheduleWarningBeeps(10000)
         # schedule gun for ten seconds
-        self.scheduleGun(10000)
+        #self.scheduleGun(10000)
         
         self.scheduleGunsForFutureFleetStarts()
     
     def handleGeneralRecall(self,aFleet):
         self.fireGun()
-        self.fireGun()
+        # we can't use our built in scheduleGun function because we then immediately cancel our schedules.
+        self.tkRoot.after(2000,self.fireGun)
         self.cancelSchedules()
         self.scheduleGunsForFutureFleetStarts()
-        #
-        # if this is the last (or only) fleet, then schedule a gun 300 seconds with
-        # its warning beeps
-        #
-        if aFleet == self.raceManager.lastFleet():
-            self.scheduleGunForFleetStart(aFleet, 300)
+        
+            
         
     def handleStartSequenceReset(self):
         self.cancelSchedules()
     
+    def convertTimeToMillis(self, aTime):
+        timeDelta =  aTime - datetime.datetime.now()
+        return  int(timeDelta.total_seconds() * 1000)
     
     def scheduleGunsForFutureFleetStarts(self):
         #
-        # iterate over all of the fleet. If the fleet is not started, schedule the guns
+        # iterate over all of the fleets. If the fleet is not started, schedule guns for the fleey
+        # and add to our set of gun schedules. We use a set to remove duplicates.
         #
+        # note the this can result in a negative time for guns. We have logic below to ignore guns
+        # in the past.
+        gunScheduleTimes = set()
         for aFleet in self.raceManager.fleets:
             if not aFleet.isStarted() :
-                self.scheduleGunForFleetStart(aFleet,240)
-                self.scheduleGunForFleetStart(aFleet,60)
-                self.scheduleGunForFleetStart(aFleet,0)
-        
+                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(300))
+                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(240))
+                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(60))
+                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(0))
+                                     
+        # now iterate over the schedules and schedule the beeps and guns
+        logging.debug("millis in schedule: " + str(gunScheduleTimes))
+        for gunScheduleTime in gunScheduleTimes:
+                # only schedule guns for the future, not the past. 
+                gunMillis = self.convertTimeToMillis(gunScheduleTime)
+                if gunMillis > 0:
+                    self.scheduleWarningBeeps(gunMillis)
+                
+                    self.scheduleGun(gunMillis)
+            
         
 class ScreenController():
     pass
