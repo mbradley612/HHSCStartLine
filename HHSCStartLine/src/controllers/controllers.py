@@ -160,9 +160,20 @@ class GunController():
         self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
         self.raceManager.changed.connect("finishAdded", self.handleFinishAdded)
         
+    # issue #38
+    # modified to separate single gun into start, finish and general gun. This allows us to have
+    # different wav files with different volumes and lengths of horn.
+    #
+        
+    def fireStartGun(self):
+        self.audioManager.queueClip("startgun")
+        
+    def fireFinishGun(self):
+        self.audioManager.queueClip("finishgun")
         
     def fireGun(self):
         self.audioManager.queueClip("gun")
+        
         
  
     def soundWarning(self):
@@ -182,9 +193,9 @@ class GunController():
             self.addSchedule(self.tkRoot.after(gunMillis, self.soundWarning))
     
  
-    def scheduleGun(self,millis):
+    def scheduleStartGun(self,millis):
         logging.log(logging.DEBUG,"Scheduling gun for %d " % millis)
-        scheduleId = self.tkRoot.after(millis, self.fireGun)
+        scheduleId = self.tkRoot.after(millis, self.fireStartGun)
         
         self.addSchedule(scheduleId)
         
@@ -242,7 +253,7 @@ class GunController():
         # schedule ten second countdown
         self.scheduleWarningBeeps(10000)
         # schedule gun for ten seconds
-        self.scheduleGun(10000)
+        self.scheduleStartGun(10000)
         
         #
         # schedule beeps for F flag down in 4 minutes time
@@ -260,7 +271,7 @@ class GunController():
         self.scheduleGunsForFutureFleetStarts()
         
     def handleFinishAdded(self,aFinish):
-        self.fireGun()
+        self.fireFinishGun()
     
     def handleSequenceStartedWithoutWarning(self):
         # schedule ten second countdown
@@ -271,9 +282,9 @@ class GunController():
         self.scheduleGunsForFutureFleetStarts()
     
     def handleGeneralRecall(self,aFleet):
-        self.fireGun()
+        self.fireStartGun()
         # we can't use our built in scheduleGun function because we then immediately cancel our schedules.
-        self.tkRoot.after(2000,self.fireGun)
+        self.tkRoot.after(2000,self.fireStartGun)
         self.cancelSchedules()
         self.scheduleGunsForFutureFleetStarts()
         
@@ -309,7 +320,7 @@ class GunController():
                 if gunMillis > 0:
                     self.scheduleWarningBeeps(gunMillis)
                 
-                    self.scheduleGun(gunMillis)
+                    self.scheduleStartGun(gunMillis)
             
         
 class ScreenController():

@@ -69,6 +69,8 @@ class AudioManager:
         
         for (clipname,wavFilename) in wavFiles:
             
+            logging.debug("Audio clip " + clipname + " has WAV file " + wavFilename)
+            
             self.audioClips[clipname] = AudioClip(wavFilename)
             
 
@@ -82,7 +84,7 @@ class AudioManager:
 
     def playClip(self,clipName):
         self.isPlaying = True
-        logging.debug("Playing wav")
+        logging.debug("Playing wav file for clip name " + clipName)
         self.audioClips[clipName].playOn(self)
 
         
