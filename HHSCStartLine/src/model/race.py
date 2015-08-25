@@ -27,7 +27,7 @@
 from datetime import datetime,timedelta
 from utils import Signal
 import logging
-from wx.lib.masked.maskededit import seconds
+
 
 
 # As per ISAF rules, start minutes is 5
