@@ -13,6 +13,7 @@ from persistence.recovery import RaceRecoveryManager
 
 import threading 
 import logging
+import logging.config
 import sys
 import ConfigParser
 import os
@@ -20,11 +21,24 @@ import tkMessageBox
 import pickle
 from controllers.controllers import ScreenController, GunController,\
     LightsController
+from logging.handlers import TimedRotatingFileHandler
 
 #
 # to manage our sub-process, we must ensure that our main is only invoked once, here. Otherewise
 # the subprocess will also invoke this code.
 #
+#----------------------------------------------------------------------
+def create_timed_rotating_log(path):
+    """"""
+    logger = logging.getLogger("Rotating Log")
+    logger.setLevel(logging.INFO)
+ 
+    handler = TimedRotatingFileHandler(path,
+                                       when="m",
+                                       interval=1,
+                                       backupCount=5)
+    logger.addHandler(handler)
+
 if __name__ == '__main__':
     
     if not len(sys.argv) == 2:
@@ -41,14 +55,11 @@ if __name__ == '__main__':
 
     config.read(configFilename)
     
-    loglevel= config.get("Logging","level")
-    logFilename = config.get("Logging","filename")
-    sys.stderr.write("Writing log file to %s\n" % logFilename)
-    logging.basicConfig(
-        level=getattr(logging, loglevel.upper()),
-        format = "%(levelname)s:%(asctime)-15s %(message)s",
-        filename = logFilename)
-                
+    
+    logConfigFilename = config.get("Logging","configFilename")
+    sys.stderr.write("Reading log file config from %s\n" % logConfigFilename)
+    
+    logging.config.fileConfig(logConfigFilename)            
     
     if config.get("Lights","enabled") == 'Y':
         lightsEnabled = True
