@@ -297,9 +297,12 @@ class AddFleetDialog:
         label = Label(self.frame, text='Choose from the list:')
         label.pack()
         
+        
         self.fleetNamesListBox = Treeview(self.frame,
-                                         selectmode="browse")
+                                         selectmode="browse",
+                                         height = 20)
         self.fleetNamesListBox.column("#0", width=400)
+        
         
         self.fleetNamesListBox.pack(fill=BOTH,expand=True)
         
