@@ -20,7 +20,7 @@ the pygame video module which we don't want to do.
 @author: MBradley
 '''
 import pygame
-import Queue
+import queue
 import logging
 
 
@@ -68,7 +68,7 @@ class AudioManager:
             self.audioClips[clipname] = AudioClip(wavFilename)
             
 
-        self.commandQueue = Queue.Queue()
+        self.commandQueue = queue.Queue()
         self.isPlaying = False
         
         
@@ -96,7 +96,7 @@ class AudioManager:
                 command = self.commandQueue.get(block=True)
                 command.executeOn(self)
                 
-            except Queue.Empty:
+            except queue.Empty:
                 # we do nothing if the queue is empty. This should never happen, because we are
                 # blocking for ever.
                 pass

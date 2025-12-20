@@ -12,11 +12,11 @@ You will need to download PyAudio, see http://people.csail.mit.edu/hubert/pyaudi
 '''
 import pyaudio
 import wave
-import Queue
+import queue
 import time
 import logging
 
-from StringIO import StringIO
+from io import BytesIO
 
 CHUNK=1024
 
@@ -29,7 +29,7 @@ class AudioClip:
     def readFileToMemory(self):
         # see http://stackoverflow.com/questions/8195544/how-to-play-wav-data-right-from-memory
         fileOnDisk = open(self.wavFilename,'rb')
-        self.fileInMemory = StringIO(fileOnDisk.read())
+        self.fileInMemory = BytesIO(fileOnDisk.read())
         fileOnDisk.close()
 
 
@@ -74,7 +74,7 @@ class AudioManager:
             self.audioClips[clipname] = AudioClip(wavFilename)
             
 
-        self.commandQueue = Queue.Queue()
+        self.commandQueue = queue.Queue()
         self.isPlaying = False
         
         
@@ -94,7 +94,7 @@ class AudioManager:
                 rate=wav.getframerate(),
                 output=True)
         data = wav.readframes(CHUNK)
-        while data != '':
+        while data != b'':
             stream.write(data)
             data = wav.readframes(CHUNK)
         stream.stop_stream() 
@@ -111,7 +111,7 @@ class AudioManager:
                 command = self.commandQueue.get(block=True)
                 command.executeOn(self)
                 
-            except Queue.Empty:
+            except queue.Empty:
                 # we do nothing if the queue is empty. This should never happen, because we are
                 # blocking for ever.
                 pass

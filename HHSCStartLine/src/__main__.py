@@ -15,10 +15,10 @@ import threading
 import logging
 import logging.config
 import sys
-import ConfigParser
+import configparser
 import os
-import tkMessageBox
 import pickle
+from tkinter import messagebox
 from controllers.controllers import ScreenController, GunController,\
     LightsController
 from logging.handlers import TimedRotatingFileHandler
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         sys.stderr.write("Config file not found")
         exit(1)
     
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
 
     config.read(configFilename)
     
@@ -105,8 +105,9 @@ if __name__ == '__main__':
     recoveryFilename = config.get("Persistence","recoveryFilename") 
     if recoveryFilename:
         if os.path.exists(config.get("Persistence","recoveryFilename")):
-            if tkMessageBox.askyesno("Crash detected","Do you want to recover?", icon="warning"):
-                raceManager = pickle.load(open(recoveryFilename))
+            if messagebox.askyesno("Crash detected","Do you want to recover?", icon="warning"):
+                with open(recoveryFilename, "rb") as recovery_file:
+                    raceManager = pickle.load(recovery_file)
             else:
                 raceManager = RaceManager()
         else:
@@ -163,4 +164,4 @@ if __name__ == '__main__':
         relayThread.start()
     audioThread.start()
     app.master.title('Startline')    
-    app.mainloop()  
+    app.mainloop()

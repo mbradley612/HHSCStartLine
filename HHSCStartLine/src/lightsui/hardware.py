@@ -4,7 +4,7 @@ Created on 26 Jan 2014
 @author: MBradley
 '''
 import logging
-import Queue
+import queue
 import datetime
 import time
 
@@ -40,13 +40,13 @@ class EasyDaqUSBRelay:
         #
         # we use a python queue as our command interface, both internally and externally
         #
-        self.commandQueue = Queue.Queue()
+        self.commandQueue = queue.Queue()
         
         #
         # we use a python queue as our session state description output mechanism. This insulates the GUI from the threading
         # of the relay
         #
-        self.sessionStateDescriptionQueue = Queue.Queue()
+        self.sessionStateDescriptionQueue = queue.Queue()
         
         #
         # we use a signal pattern to notify events
@@ -357,7 +357,7 @@ class EasyDaqUSBRelay:
                 nextCommand = self.commandQueue.get(timeout=5)
                 logging.debug("Return from command queue")
                 nextCommand.executeOn(self)
-            except Queue.Empty:
+            except queue.Empty:
                 logging.debug("Timeout on command queue. Maintaining session.")
                 self.maintainSession()
         self.disconnect()

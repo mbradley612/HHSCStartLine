@@ -17,34 +17,32 @@ Created on 29 Jul 2014
 import os
 import pickle
 import logging
-import Queue
+import queue
 
 class RaceRecoveryManager:
     def __init__(self,pickleFilename,raceManager):
         self.pickleFilename = pickleFilename
         self.raceManager = raceManager
-        self.saveQueue = Queue.Queue() 
+        self.saveQueue = queue.Queue() 
         
     def hasRecoveryFile(self):
         return os.path.exists(self.pickleFilename)
     
     
     def readPickledRaceManager(self):
-        pickleFile = open(self.pickleFilename,"r")
-        pickledRaceManager = pickle.load(pickleFile)
-        pickleFile.close()
-        
+        with open(self.pickleFilename,"rb") as pickleFile:
+            pickledRaceManager = pickle.load(pickleFile)
+
         return pickledRaceManager
     
     def writeRecoveryFile(self,fileContents):
         #
         #
-        recoveryFile = open(self.pickleFilename,"w") 
-        recoveryFile.write(fileContents)
-        recoveryFile.close()
+        with open(self.pickleFilename,"wb") as recoveryFile:
+            recoveryFile.write(fileContents)
         
     def raceManagerChanged(self,aRaceManager):
-        self.writePickleRaceManager(aRaceManager)
+        self.handleRaceManagerChanged()
         
     def handleRaceManagerChanged(self,*args):
         
@@ -62,7 +60,7 @@ class RaceRecoveryManager:
                 pickledRaceManager = self.saveQueue.get(block=True)
                 self.writeRecoveryFile(pickledRaceManager)
                 
-            except Queue.Empty:
+            except queue.Empty:
                 # we do nothing if the queue is empty. This should never happen, because we are
                 # blocking for ever.
                 pass

@@ -7,9 +7,9 @@ Add some notes here about the choice of UI architecture, in particular TreeView
 @author: MBradley
 '''
 
-from Tkinter import *
-from ttk import *
- 
+from tkinter import *
+from tkinter.ttk import *
+
 
 from model.race import RaceManager
 
