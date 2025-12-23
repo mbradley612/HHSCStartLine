@@ -190,37 +190,40 @@ class EasyDaqUSBRelay:
                 self.queuePacketToEasyDaq()
         
     
+    def _attempt_connection(self):
+        logging.debug("Attempting to connect to serial port")
+        try:
+            if self.serialConnection.isOpen():
+                logging.debug("Request to open serial port when already open")
+            else:
+                self.serialConnection.open()
+                logging.debug("Connected to serial port")
+            time.sleep(2)
+            self.establishSession()
+            return True
+        except (serial.SerialException, ValueError) as e:
+            logging.error("I/O error: {0}".format(e))
+            self.serialConnection.close()
+            self.beReconnecting()
+            return False
+
+
     def _connect(self):
-        # we are sometimes trying to connect when we are already
-        # connected
-        if not self.isConnected():
-            logging.debug("Connecting to serial port")
-            self.enabled = True
-            try:
-                # try to open the serial port
-                if self.serialConnection.isOpen():
-                    logging.debug("Request to open serial port when already open")
-                else:
-                    self.serialConnection.open()
-                    logging.debug("Connected to serial port")
-                # wait for a second and establish the session
-                time.sleep(2)
-                self.establishSession()
-            
-            except (serial.SerialException,ValueError) as e:           
-                logging.error("I/O error: {0}".format(e))
-                self.serialConnection.close()
-                self.beReconnecting()
-                self.reconnect()
-        else:
+        if self.isConnected():
             logging.debug("Request for connect when already connected")
-            
-    
+            return
+
+        self.enabled = True
+
+        while self.enabled and getattr(self, "isRunning", True) and not self.isConnected():
+            if self._attempt_connection():
+                return
+            logging.info("Reconnecting to serial port")
+            time.sleep(5)
+
+
     def reconnect(self):
         logging.info("Reconnecting to serial port")
-        # sleep for 5 seconds
-        time.sleep(5)
-        # connect
         self._connect()
         
         
