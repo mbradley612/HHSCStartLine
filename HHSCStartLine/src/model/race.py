@@ -25,7 +25,7 @@
 #
 
 from datetime import datetime,timedelta
-from utils import Signal
+from model.utils import Signal
 import logging
 
 

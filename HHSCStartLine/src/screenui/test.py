@@ -4,8 +4,8 @@ Created on 19 Jan 2014
 @author: MBradley
 '''
 import os
-import Tkinter as tk
-import ttk
+import tkinter as tk
+from tkinter import ttk
 
 
 class App(tk.Frame):

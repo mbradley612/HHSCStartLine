@@ -1,1 +1,1 @@
-python build/startline.zip startline.ini
+python3 build/startline.zip startline.ini

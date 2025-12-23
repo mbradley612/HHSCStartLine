@@ -14,10 +14,10 @@ import logging
 import sys
 
 import datetime
-import tkMessageBox
-import Tkinter
-import Queue
-import ConfigParser
+from tkinter import messagebox
+import tkinter as tk
+import queue
+import configparser
 import os
 import pickle
 
@@ -458,7 +458,7 @@ class ScreenController():
 
 
     def resetStartRaceSequenceClicked(self):
-        result = tkMessageBox.askquestion("Reset race sequence","Are you sure? This will remove any finishes.", icon="warning")
+        result = messagebox.askquestion("Reset race sequence","Are you sure? This will remove any finishes.", icon="warning")
         if result == 'yes':
             self.raceManager.resetStartSequence()
         self.updateButtonStates()
@@ -546,11 +546,11 @@ class ScreenController():
             
     def enableFleetButtons(self):
         for button in self.fleetButtons:
-            button['state'] = Tkinter.NORMAL
+            button['state'] = tk.NORMAL
             
     def disableFleetButtons(self):
         for button in self.fleetButtons:
-            button['state'] = Tkinter.DISABLED
+            button['state'] = tk.DISABLED
         
     
     def handleFleetButtonClickedForFleet(self,fleet):
@@ -652,7 +652,7 @@ class ScreenController():
                 try:
                     message = self.easyDaqRelay.sessionStateDescriptionQueue.get_nowait()
                     self.startLineFrame.connectionStatus.set(message)
-                except Queue.Empty:
+                except queue.Empty:
                     # this should never happen. 
                     message = "Lights: No message available"
                     
@@ -801,7 +801,7 @@ class ScreenController():
 
 
     def exitClicked(self):
-        result = tkMessageBox.askquestion("Exit","Are you sure?", icon="warning")
+        result = messagebox.askquestion("Exit","Are you sure?", icon="warning")
         if result == 'yes':
             self.shutdown()
         

@@ -30,6 +30,9 @@ char easyDaqCommand;
 int easyDaqValue;
 const int outputDiagnostics = false;
 
+const int firstGPIOPin = 2;
+
+
 void setup()
 {
   // EasyDaq serial port operates at 9600
@@ -57,9 +60,9 @@ void executeCommand(char command,int value) {
 
       if (bitRead(value,bitPosition) == 0) {
         
-        pinMode(2+bitPosition, OUTPUT);
+        pinMode(firstGPIOPin+bitPosition, OUTPUT);
       } else {
-        pinMode(2+bitPosition, INPUT);
+        pinMode(firstGPIOPin+bitPosition, INPUT);
       }
     }  
   } else if (command=='C') {
@@ -67,9 +70,9 @@ void executeCommand(char command,int value) {
     for (int bitPosition = 0; bitPosition <= 8; bitPosition++) {
     //tone(13, 2000, 500);
       if (bitRead(value,bitPosition) == 1) {
-        digitalWrite(2+bitPosition, HIGH);
+        digitalWrite(firstGPIOPin+bitPosition, HIGH);
       } else {
-        digitalWrite(2+bitPosition, LOW);
+        digitalWrite(firstGPIOPin+bitPosition, LOW);
       }
     }
   } else if (command=='A') {
