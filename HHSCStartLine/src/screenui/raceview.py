@@ -40,10 +40,16 @@ class StartLineFrame(Frame):
         top.columnconfigure(0, weight=1)
         
         style = Style()
-        #style.theme_use('winnative')
+        # ensure consistent button sizing across platforms (macOS aqua ignores padding)
+        try:
+            style.theme_use('clam')
+        except TclError:
+            pass
+        
         style.configure('.', font=('Helvetica',self.fontSize))
         style.configure('Treeview',rowheight=30)
         style.configure('TButton')
+        style.configure('Large.TButton', padding=(6, 12))
         
         
     
@@ -79,20 +85,26 @@ class StartLineFrame(Frame):
         self.fleetManageButtons.grid_columnconfigure(0, weight=1)
 
         self.addFleetButton = Button(self.fleetManageButtons,
-                                     text="Add fleet")
+                                     text="Add fleet",
+                                     style='Large.TButton')
+
         self.addFleetButton.grid(row=0,
                                  column=0,
                                  sticky=W+E+N+S)
 
         self.removeFleetButton = Button(self.fleetManageButtons,
-                                        text="Remove fleet",state=DISABLED)
+                                        text="Remove fleet",state=DISABLED,
+                                        style='Large.TButton')
+
         self.removeFleetButton.grid(row=1,
                                     column=0,
                                     sticky=W+E+N+S)
         
         # start race sequence without warning
         self.startRaceSequenceWithoutWarningButton = Button(self,
-                                        text="Class Flag Start\n      (5 mins)",state=DISABLED)
+                                        text="Class Flag Start\n      (5 mins)",state=DISABLED,
+                                        style='Large.TButton')
+
         self.startRaceSequenceWithoutWarningButton.grid(row=3,
                                                         column=1,
                                                         rowspan=2,
@@ -102,7 +114,9 @@ class StartLineFrame(Frame):
         
         # general recall button
         self.generalRecallButton = Button(self,
-                                        text="General recall",state=DISABLED)
+                                        text="General recall",state=DISABLED,
+                                        style='Large.TButton')
+
         self.generalRecallButton.grid(row=5,
                                       column=1,
                                       sticky=W+E+N+S,
@@ -111,7 +125,9 @@ class StartLineFrame(Frame):
         
         # abandon sequence button
         self.resetStartRaceSequenceButton = Button(self,
-                                          text="Reset start",state=DISABLED)
+                                          text="Reset start",state=DISABLED,
+                                          style='Large.TButton')
+
         self.resetStartRaceSequenceButton.grid(row=5,
                                       column=0,
                                       sticky=W+E+N+S,
