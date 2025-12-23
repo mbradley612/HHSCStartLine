@@ -375,7 +375,6 @@ class ScreenController():
         self.startLineFrame.removeFleetButton.config(command=self.removeFleetClicked)
         self.startLineFrame.fleetsTreeView.bind("<<TreeviewSelect>>",self.fleetSelectionChanged)
         self.startLineFrame.finishTreeView.bind("<<TreeviewSelect>>",self.finishSelectionChanged)
-        self.startLineFrame.startRaceSequenceWithWarningButton.config(command=self.startRaceSequenceWithWarningClicked)
         self.startLineFrame.startRaceSequenceWithoutWarningButton.config(command=self.startRaceSequenceWithoutWarningClicked)
         self.startLineFrame.generalRecallButton.config(command=self.generalRecallClicked)
         self.startLineFrame.gunButton.config(command=self.gunClicked)
@@ -754,7 +753,6 @@ class ScreenController():
             self.startLineFrame.disableAddFleetButton()
             self.startLineFrame.disableRemoveFleetButton()
             self.startLineFrame.disableStartRaceSequenceWithoutWarningButton()
-            self.startLineFrame.disableStartRaceSequenceWithWarningButton()
            
         else:
             self.startLineFrame.enableAddFleetButton()
@@ -766,7 +764,6 @@ class ScreenController():
             
                 
                 self.startLineFrame.enableStartRaceSequenceWithoutWarningButton()
-                self.startLineFrame.enableStartRaceSequenceWithWarningButton()
                 if self.selectedFleet:
                     self.startLineFrame.enableRemoveFleetButton()
                 else:
@@ -774,7 +771,6 @@ class ScreenController():
             else:
                 self.startLineFrame.disableRemoveFleetButton()
                 self.startLineFrame.disableStartRaceSequenceWithoutWarningButton()
-                self.startLineFrame.disableStartRaceSequenceWithWarningButton()
   
     
         if self.selectedFinish:

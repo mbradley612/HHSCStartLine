@@ -87,20 +87,12 @@ class StartLineFrame(Frame):
                                    #ipady=20
                                    )
         
-        # start race sequence with warning
-        self.startRaceSequenceWithWarningButton = Button(self,
-                                        text="F Flag Start\n  (10 mins)",state=DISABLED)
-        self.startRaceSequenceWithWarningButton.grid(row=3,
-                                                     column=1,
-                                                     sticky=W+E+N+S,
-                                                     #ipady=20
-                                                     )
-        
         # start race sequence without warning
         self.startRaceSequenceWithoutWarningButton = Button(self,
                                         text="Class Flag Start\n      (5 mins)",state=DISABLED)
-        self.startRaceSequenceWithoutWarningButton.grid(row=4,
+        self.startRaceSequenceWithoutWarningButton.grid(row=3,
                                                         column=1,
+                                                        rowspan=2,
                                                         sticky=W+E+N+S,
                                                         #ipady=20
                                                         )
@@ -258,14 +250,8 @@ class StartLineFrame(Frame):
     def disableRemoveFleetButton(self):
         self.removeFleetButton['state']=DISABLED
         
-    def disableStartRaceSequenceWithWarningButton(self):
-        self.startRaceSequenceWithWarningButton['state'] = DISABLED
-        
     def disableStartRaceSequenceWithoutWarningButton(self):
         self.startRaceSequenceWithoutWarningButton['state'] = DISABLED
-        
-    def enableStartRaceSequenceWithWarningButton(self):
-        self.startRaceSequenceWithWarningButton['state'] = NORMAL
         
     def enableStartRaceSequenceWithoutWarningButton(self):
         self.startRaceSequenceWithoutWarningButton['state'] = NORMAL
