@@ -89,6 +89,9 @@ class EasyDaqUSBRelay:
         #
         self.sessionState = DISCONNECTED
             
+    def _build_packet(self, command_char, value):
+        return bytes((ord(command_char), value))
+
     def setSessionState(self,state):
         self.sessionState = state
         logging.info("Session state is %s" % self.sessionStateDescription())
@@ -137,7 +140,7 @@ class EasyDaqUSBRelay:
             try:
                 
                 # create a relay packet that requests the EasyDaq to output its status
-                self.currentRelayPacket = 'A' + chr(0)
+                self.currentRelayPacket = self._build_packet('A', 0)
                 # and queue a request
                 self.queuePacketToEasyDaq()
                 
@@ -250,7 +253,7 @@ class EasyDaqUSBRelay:
             #
             # Not the most elegant, but we check to see if this packet is a command by looking for a C as the first byte of the packet
             #
-            if self.currentRelayPacket[0] =='C':
+            if self.currentRelayPacket[0] == ord('C'):
                 
                 self.previousRelayCommand = self.currentRelayCommand
                 self.currentRelayCommand = None
@@ -265,7 +268,7 @@ class EasyDaqUSBRelay:
             self.reconnect()
     
     def printableCommand(self,relayCommand):
-        return relayCommand[0] + "," + str(ord(relayCommand[1]))
+        return chr(relayCommand[0]) + "," + str(relayCommand[1])
     
     def queuePacketToEasyDaq(self):
         '''
@@ -317,7 +320,7 @@ class EasyDaqUSBRelay:
                 commandValue = commandValue + bitValue
         
         logging.debug("Sending C + %i" % commandValue)
-        relayCommand = 'C' + chr(commandValue)
+        relayCommand = self._build_packet('C', commandValue)
         self.currentRelayCommand = relayCommand
         
         self.currentRelayPacket = relayCommand
@@ -337,7 +340,7 @@ class EasyDaqUSBRelay:
                 commandValue = commandValue + bitValue
         
         logging.debug("Sending B + %i" % commandValue)        
-        self.currentRelayPacket = 'B' + chr(commandValue)
+        self.currentRelayPacket = self._build_packet('B', commandValue)
         
         self.queuePacketToEasyDaq()
         
