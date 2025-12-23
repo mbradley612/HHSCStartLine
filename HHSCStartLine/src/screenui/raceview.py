@@ -68,24 +68,27 @@ class StartLineFrame(Frame):
         ysb.grid(row=0, column=2, sticky=N+S, rowspan=2)
         xsb.grid(row=2, column=0, columnspan=2,sticky=W+E)
         
-        # add fleet button
-        self.addFleetButton = Button(self,
-                                    text="Add fleet")
-        self.addFleetButton.grid(row=3,
-                                column=0,
-                                sticky=W+E+N+S,
-                                   #ipady=20
-                                   )
-        
-        
-        # remove fleet button
-        self.removeFleetButton = Button(self,
+        # add/remove fleet buttons share a frame so they keep equal height
+        self.fleetManageButtons = Frame(self)
+        self.fleetManageButtons.grid(row=3,
+                                     column=0,
+                                     rowspan=2,
+                                     sticky=W+E+N+S)
+        self.fleetManageButtons.grid_rowconfigure(0, weight=1)
+        self.fleetManageButtons.grid_rowconfigure(1, weight=1)
+        self.fleetManageButtons.grid_columnconfigure(0, weight=1)
+
+        self.addFleetButton = Button(self.fleetManageButtons,
+                                     text="Add fleet")
+        self.addFleetButton.grid(row=0,
+                                 column=0,
+                                 sticky=W+E+N+S)
+
+        self.removeFleetButton = Button(self.fleetManageButtons,
                                         text="Remove fleet",state=DISABLED)
-        self.removeFleetButton.grid(row=4,
-                                   column=0, 
-                                   sticky=W+E+N+S,
-                                   #ipady=20
-                                   )
+        self.removeFleetButton.grid(row=1,
+                                    column=0,
+                                    sticky=W+E+N+S)
         
         # start race sequence without warning
         self.startRaceSequenceWithoutWarningButton = Button(self,
