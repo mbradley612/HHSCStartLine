@@ -100,17 +100,22 @@ class StartLineFrame(Frame):
                                     column=0,
                                     sticky=W+E+N+S)
         
-        # start race sequence
-        self.startRaceSequenceWithoutWarningButton = Button(self,
-                                        text="Class Flag Start\n      (3 mins)",state=DISABLED,
+        # start race sequence buttons (5 minute and 3 minute)
+        self.startFiveMinuteSequenceButton = Button(self,
+                                        text="5 minute start",state=DISABLED,
                                         style='Large.TButton')
 
-        self.startRaceSequenceWithoutWarningButton.grid(row=3,
-                                                        column=1,
-                                                        rowspan=2,
-                                                        sticky=W+E+N+S,
-                                                        #ipady=20
-                                                        )
+        self.startFiveMinuteSequenceButton.grid(row=3,
+                                                column=1,
+                                                sticky=W+E+N+S)
+
+        self.startThreeMinuteSequenceButton = Button(self,
+                                        text="3 minute start",state=DISABLED,
+                                        style='Large.TButton')
+
+        self.startThreeMinuteSequenceButton.grid(row=4,
+                                                column=1,
+                                                sticky=W+E+N+S)
         
         # general recall button
         self.generalRecallButton = Button(self,
@@ -269,11 +274,13 @@ class StartLineFrame(Frame):
     def disableRemoveFleetButton(self):
         self.removeFleetButton['state']=DISABLED
         
-    def disableStartRaceSequenceWithoutWarningButton(self):
-        self.startRaceSequenceWithoutWarningButton['state'] = DISABLED
+    def disableStartSequenceButtons(self):
+        self.startFiveMinuteSequenceButton['state'] = DISABLED
+        self.startThreeMinuteSequenceButton['state'] = DISABLED
         
-    def enableStartRaceSequenceWithoutWarningButton(self):
-        self.startRaceSequenceWithoutWarningButton['state'] = NORMAL
+    def enableStartSequenceButtons(self):
+        self.startFiveMinuteSequenceButton['state'] = NORMAL
+        self.startThreeMinuteSequenceButton['state'] = NORMAL
         
     def disableResetStartRaceSequenceButton(self):
         self.resetStartRaceSequenceButton['state'] = DISABLED

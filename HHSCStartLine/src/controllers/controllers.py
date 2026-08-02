@@ -4,7 +4,7 @@ Created on 23 Jan 2014
 @author: MBradley
 '''
 from screenui.raceview import StartLineFrame,AddFleetDialog
-from model.race import RaceManager
+from model.race import RaceManager, THREE_MINUTE_START_SECONDS, HORN_SECONDS_BY_START
 from screenui.audio import AudioManager
 from persistence.recovery import RaceRecoveryManager
 from lightsui.hardware import LIGHT_OFF, LIGHT_ON
@@ -44,7 +44,7 @@ class LightsController():
         
         
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
-        self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStarted)
+        self.raceManager.changed.connect("sequenceStarted",self.handleSequenceStarted)
         self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
         
         
@@ -81,20 +81,19 @@ class LightsController():
         if nextFleetToStart:
             secondsToStart = -1 * nextFleetToStart.adjustedDeltaSecondsToStartTime()
             
-            # 3 minute start sequence (issue #46):
-            # 180 seconds: horn and 3 lights
-            # 120 seconds: 2 lights
-            # 60 seconds: horn and 1 light
+            # One light is shown for each full minute until the start (capped at
+            # five). This works for both the 3 and 5 minute start sequences,
+            # e.g. at 3 minutes to go there are 3 lights on.
+            #
             # 30 seconds: flashing lights
-            # 0 seconds: horn and lights out
-            if secondsToStart <= 180 and secondsToStart > 120:
-                lights = [LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_OFF, LIGHT_OFF]
-            elif secondsToStart <= 120 and secondsToStart > 60:
-                lights = [LIGHT_ON, LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
-            elif secondsToStart <= 60 and secondsToStart > 30:
+            # 0 seconds: lights out
+            minutesToStart = -(-secondsToStart // 60)
+            lightsOn = min(5, int(minutesToStart))
+            
+            if 0 < secondsToStart <= 30 and (int(secondsToStart * 2) % 2 == 0):
                 lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
-            elif secondsToStart <= 30 and (int(secondsToStart * 2) % 2 == 0):
-                lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
+            elif secondsToStart > 0:
+                lights = [LIGHT_ON] * lightsOn + [LIGHT_OFF] * (5 - lightsOn)
             else:
                 lights = [LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
             
@@ -155,7 +154,7 @@ class GunController():
     # for the events we are interested in
     #   
     def wireController(self):
-        self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStartedWithoutWarning)
+        self.raceManager.changed.connect("sequenceStarted",self.handleSequenceStarted)
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
         self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
         self.raceManager.changed.connect("finishAdded", self.handleFinishAdded)
@@ -245,7 +244,7 @@ class GunController():
         
     
                             
-    def handleSequenceStartedWithoutWarning(self):
+    def handleSequenceStarted(self):
         self.scheduleGunsForFutureFleetStarts()
     
     def handleFinishAdded(self,aFinish):
@@ -275,12 +274,11 @@ class GunController():
         # note the this can result in a negative time for guns. We have logic below to ignore guns
         # in the past.
         gunScheduleTimes = set()
+        hornSeconds = HORN_SECONDS_BY_START[self.raceManager.startSeconds]
         for aFleet in self.raceManager.fleets:
             if not aFleet.isStarted() :
-                # 3 minute start sequence (issue #46): horns at 3 minutes, 1 minute and 0
-                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(180))
-                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(60))
-                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(0))
+                for secondsBefore in hornSeconds:
+                    gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(secondsBefore))
                                      
         # now iterate over the schedules and schedule the beeps and guns
         logging.debug("millis in schedule: " + str(gunScheduleTimes))
@@ -332,7 +330,7 @@ class ScreenController():
         self.raceManager.changed.connect("finishAdded",self.handleFinishAdded)
         self.raceManager.changed.connect("finishRemoved",self.handleFinishRemoved)
         self.raceManager.changed.connect("finishChanged",self.handleFinishChanged)
-        self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStarted)
+        self.raceManager.changed.connect("sequenceStarted",self.handleSequenceStarted)
         
         #
         # Need to change this from event based to refreshing as part of the update loop
@@ -344,7 +342,8 @@ class ScreenController():
         self.startLineFrame.removeFleetButton.config(command=self.removeFleetClicked)
         self.startLineFrame.fleetsTreeView.bind("<<TreeviewSelect>>",self.fleetSelectionChanged)
         self.startLineFrame.finishTreeView.bind("<<TreeviewSelect>>",self.finishSelectionChanged)
-        self.startLineFrame.startRaceSequenceWithoutWarningButton.config(command=self.startRaceSequenceWithoutWarningClicked)
+        self.startLineFrame.startFiveMinuteSequenceButton.config(command=self.startFiveMinuteSequenceClicked)
+        self.startLineFrame.startThreeMinuteSequenceButton.config(command=self.startThreeMinuteSequenceClicked)
         self.startLineFrame.generalRecallButton.config(command=self.generalRecallClicked)
         self.startLineFrame.gunButton.config(command=self.gunClicked)
         self.startLineFrame.gunAndFinishButton.config(command=self.gunAndFinishClicked)
@@ -375,7 +374,7 @@ class ScreenController():
              index="end",
              iid = aFleet.fleetId,
              text = aFleet.name,
-             values=(self.renderDeltaToStartTime(aFleet),aFleet.status()))  
+             values=(self.renderDeltaToStartTime(aFleet),aFleet.status(self.raceManager.startSeconds)))  
             
     def showAddFleetDialog(self):
         addFleetDialog = AddFleetDialog(self.startLineFrame,self.defaultFleetNames)
@@ -407,8 +406,13 @@ class ScreenController():
             self.raceManager.removeFleet(self.selectedFleet)
         self.updateButtonStates()
             
-    def startRaceSequenceWithoutWarningClicked(self):
-        self.raceManager.startRaceSequenceWithoutWarning()
+    def startFiveMinuteSequenceClicked(self):
+        self.raceManager.startRaceSequence()
+        self.updateButtonStates()
+        
+    
+    def startThreeMinuteSequenceClicked(self):
+        self.raceManager.startRaceSequence(THREE_MINUTE_START_SECONDS)
         self.updateButtonStates()
         
         
@@ -668,7 +672,7 @@ class ScreenController():
             self.startLineFrame.fleetsTreeView.item(
                         aFleet.fleetId,
                         
-                        values=[self.renderDeltaToStartTime(aFleet), self.renderDeltaSecondsToStartTime(aFleet),aFleet.status()])
+                        values=[self.renderDeltaToStartTime(aFleet), self.renderDeltaSecondsToStartTime(aFleet),aFleet.status(self.raceManager.startSeconds)])
         
        
         
@@ -716,7 +720,7 @@ class ScreenController():
             self.startLineFrame.enableResetStartRaceSequenceButton()
             self.startLineFrame.disableAddFleetButton()
             self.startLineFrame.disableRemoveFleetButton()
-            self.startLineFrame.disableStartRaceSequenceWithoutWarningButton()
+            self.startLineFrame.disableStartSequenceButtons()
            
         else:
             self.startLineFrame.enableAddFleetButton()
@@ -727,14 +731,14 @@ class ScreenController():
             
             
                 
-                self.startLineFrame.enableStartRaceSequenceWithoutWarningButton()
+                self.startLineFrame.enableStartSequenceButtons()
                 if self.selectedFleet:
                     self.startLineFrame.enableRemoveFleetButton()
                 else:
                     self.startLineFrame.disableRemoveFleetButton()
             else:
                 self.startLineFrame.disableRemoveFleetButton()
-                self.startLineFrame.disableStartRaceSequenceWithoutWarningButton()
+                self.startLineFrame.disableStartSequenceButtons()
   
     
         if self.selectedFinish:
