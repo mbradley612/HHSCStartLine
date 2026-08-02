@@ -312,7 +312,7 @@ class AddFleetDialog:
         
         self.fleetNamesListBox = Treeview(self.frame,
                                          selectmode="browse",
-                                         height = 20)
+                                         height = 8)
         self.fleetNamesListBox.column("#0", width=400)
         
         

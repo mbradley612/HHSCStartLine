@@ -38,7 +38,7 @@ LAST_START_GENERAL_RECALL_DELAY=60
 
 # Horn times (seconds before a fleet start) for each start sequence length
 HORN_SECONDS_BY_START = {
-    THREE_MINUTE_START_SECONDS: (180, 60, 0),
+    THREE_MINUTE_START_SECONDS: (180, 120, 60, 0),
     START_SECONDS: (300, 240, 60, 0),
 }
 

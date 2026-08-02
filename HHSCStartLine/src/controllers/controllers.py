@@ -81,6 +81,13 @@ class LightsController():
         if nextFleetToStart:
             secondsToStart = -1 * nextFleetToStart.adjustedDeltaSecondsToStartTime()
             
+            # The sequence always begins with a ten second prep before the first
+            # horn, so seconds to start is briefly larger than the sequence
+            # length (e.g. 190 for a 3 minute start). No lights are shown then;
+            # the countdown lights only appear once the sequence proper starts.
+            if secondsToStart > self.raceManager.startSeconds:
+                return lights
+            
             # One light is shown for each full minute until the start (capped at
             # five). This works for both the 3 and 5 minute start sequences,
             # e.g. at 3 minutes to go there are 3 lights on.
@@ -90,8 +97,10 @@ class LightsController():
             minutesToStart = -(-secondsToStart // 60)
             lightsOn = min(5, int(minutesToStart))
             
-            if 0 < secondsToStart <= 30 and (int(secondsToStart * 2) % 2 == 0):
-                lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
+            if 0 < secondsToStart <= 30:
+                # last half minute: flash the first light on and off
+                if (int(secondsToStart * 2) % 2 == 0):
+                    lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
             elif secondsToStart > 0:
                 lights = [LIGHT_ON] * lightsOn + [LIGHT_OFF] * (5 - lightsOn)
             else:
