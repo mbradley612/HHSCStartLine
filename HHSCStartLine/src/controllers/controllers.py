@@ -44,7 +44,6 @@ class LightsController():
         
         
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
-        self.raceManager.changed.connect("sequenceStartedWithWarning",self.handleSequenceStarted)
         self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStarted)
         self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
         
@@ -82,15 +81,17 @@ class LightsController():
         if nextFleetToStart:
             secondsToStart = -1 * nextFleetToStart.adjustedDeltaSecondsToStartTime()
             
-            if secondsToStart <=300 and secondsToStart > 240:
-                lights = [LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_ON]
-            elif secondsToStart <= 240 and secondsToStart > 180:
-                lights = [LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_OFF]
-            elif secondsToStart <= 180 and secondsToStart > 120: 
+            # 3 minute start sequence (issue #46):
+            # 180 seconds: horn and 3 lights
+            # 120 seconds: 2 lights
+            # 60 seconds: horn and 1 light
+            # 30 seconds: flashing lights
+            # 0 seconds: horn and lights out
+            if secondsToStart <= 180 and secondsToStart > 120:
                 lights = [LIGHT_ON, LIGHT_ON, LIGHT_ON, LIGHT_OFF, LIGHT_OFF]
-            elif secondsToStart <= 120 and secondsToStart > 60: 
+            elif secondsToStart <= 120 and secondsToStart > 60:
                 lights = [LIGHT_ON, LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
-            elif secondsToStart <= 60 and secondsToStart > 30: 
+            elif secondsToStart <= 60 and secondsToStart > 30:
                 lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
             elif secondsToStart <= 30 and (int(secondsToStart * 2) % 2 == 0):
                 lights = [LIGHT_ON, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
@@ -154,7 +155,6 @@ class GunController():
     # for the events we are interested in
     #   
     def wireController(self):
-        self.raceManager.changed.connect("sequenceStartedWithWarning",self.handleSequenceStartedWithWarning)
         self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStartedWithoutWarning)
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
         self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
@@ -223,13 +223,13 @@ class GunController():
             # and subtract the requested seconds before divided by the test speed ratio.
             #
             # For example, with a test speed ratio of 5, the seconds to start for the
-            # first race with an F flag start will be 600  / 5 = 120 seconds.
+            # first race in a 3 minute sequence will be 190 / 5 = 38 seconds.
             #
-            # For the five minute (300 seconds) gun, the calculation is:
-            # 120 - (300/5) = 60 seconds.
+            # For the three minute (180 seconds) gun, the calculation is:
+            # 38 - (180/5) = 2 seconds.
             #
-            # For the four minute gun (240 seconds) gun, the calculation is:
-            # 120 - (240/5) = 72 seconds
+            # For the one minute gun (60 seconds), the calculation is:
+            # 38 - (60/5) = 26 seconds
             #
             secondsToGun = secondsToStart - secondsBefore / RaceManager.testSpeedRatio
             logging.info("Seconds to start: %d, scheduling gun for %d seconds" % (secondsToStart,secondsToGun))
@@ -245,41 +245,11 @@ class GunController():
         
     
                             
-    #
-    # For a sequence start, we fire the gun then schedule our other guns. We ask the race manager to
-    # adjust our start seconds to reflect if we have speedup the start for testing purposes.
-    #
-    def handleSequenceStartedWithWarning(self):
-        # schedule ten second countdown
-        self.scheduleWarningBeeps(10000)
-        # schedule gun for ten seconds
-        self.scheduleStartGun(10000)
-        
-        #
-        # schedule beeps for F flag down in 4 minutes time
-        #
-        fFlagDownMillis = 10000 + (4 * 60000) / RaceManager.testSpeedRatio
-        self.scheduleWarningBeeps(fFlagDownMillis, finalWarning=True)
-        
-        
-        # schedule guns for the first fleet
-        
-        #self.scheduleGunForFleetStart(self.raceManager.fleets[0],300)
-        
-        # schedule guns for future fleets
-        
+    def handleSequenceStartedWithoutWarning(self):
         self.scheduleGunsForFutureFleetStarts()
-        
+    
     def handleFinishAdded(self,aFinish):
         self.fireFinishGun()
-    
-    def handleSequenceStartedWithoutWarning(self):
-        # schedule ten second countdown
-        #self.scheduleWarningBeeps(10000)
-        # schedule gun for ten seconds
-        #self.scheduleGun(10000)
-        
-        self.scheduleGunsForFutureFleetStarts()
     
     def handleGeneralRecall(self,aFleet):
         self.fireStartGun()
@@ -307,8 +277,8 @@ class GunController():
         gunScheduleTimes = set()
         for aFleet in self.raceManager.fleets:
             if not aFleet.isStarted() :
-                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(300))
-                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(240))
+                # 3 minute start sequence (issue #46): horns at 3 minutes, 1 minute and 0
+                gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(180))
                 gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(60))
                 gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(0))
                                      
@@ -362,7 +332,6 @@ class ScreenController():
         self.raceManager.changed.connect("finishAdded",self.handleFinishAdded)
         self.raceManager.changed.connect("finishRemoved",self.handleFinishRemoved)
         self.raceManager.changed.connect("finishChanged",self.handleFinishChanged)
-        self.raceManager.changed.connect("sequenceStartedWithWarning",self.handleSequenceStarted)
         self.raceManager.changed.connect("sequenceStartedWithoutWarning",self.handleSequenceStarted)
         
         #
@@ -438,11 +407,6 @@ class ScreenController():
             self.raceManager.removeFleet(self.selectedFleet)
         self.updateButtonStates()
             
-    def startRaceSequenceWithWarningClicked(self):
-        self.raceManager.startRaceSequenceWithWarning()
-        self.updateButtonStates()
-        
-    
     def startRaceSequenceWithoutWarningClicked(self):
         self.raceManager.startRaceSequenceWithoutWarning()
         self.updateButtonStates()

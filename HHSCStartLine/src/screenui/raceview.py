@@ -100,9 +100,9 @@ class StartLineFrame(Frame):
                                     column=0,
                                     sticky=W+E+N+S)
         
-        # start race sequence without warning
+        # start race sequence
         self.startRaceSequenceWithoutWarningButton = Button(self,
-                                        text="Class Flag Start\n      (5 mins)",state=DISABLED,
+                                        text="Class Flag Start\n      (3 mins)",state=DISABLED,
                                         style='Large.TButton')
 
         self.startRaceSequenceWithoutWarningButton.grid(row=3,

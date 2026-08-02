@@ -150,7 +150,6 @@ if __name__ == '__main__':
     screenController = ScreenController(app,raceManager,audioManager,easyDaqRelay, recoveryManager,defaultFleetNames,fontSize)
     gunController = GunController(app, audioManager, raceManager)
     # check if a recovered raceManager has a started sequence. If so, schedule guns.
-    # note, this does not recover the F flag up beeps and gun nor F flag down beeps
     if raceManager.hasSequenceStarted():
         gunController.scheduleGunsForFutureFleetStarts()
     

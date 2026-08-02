@@ -30,12 +30,8 @@ import logging
 
 
 
-# As per ISAF rules, start minutes is 5
-# START_SECONDS = 300
-# WARNING_SECONDS=300
-# But we can reduce this for testing
-START_SECONDS=300
-WARNING_SECONDS=300
+# Start sequence is 3 minutes (issue #46)
+START_SECONDS=180
 LAST_START_GENERAL_RECALL_DELAY=60
 
 class RaceException(Exception):
@@ -134,7 +130,7 @@ class Fleet:
         else:
             raise RaceException(self, "Fleet has no start time")
 
-    # we are starting if our start time is in 5 mins or less
+    # we are starting if our start time is within START_SECONDS
     def isStarting(self):
         # we can only be starting if we have a start time
         if self.hasStartTime():
@@ -300,28 +296,8 @@ class RaceManager:
         return self.numberFleets() > 0
 
     #
-    # Start our race sequence in ten seconds with a five minute warning before the first
-    # fleet, i.e. 10 minutes to the first fleet start. This is F flag start
-    #
-    def startRaceSequenceWithWarning(self):
-        logging.info("Start sequence with warning (F flag start)")
-        fleetNumber = 0
-        
-        now = datetime.now()
-        sequenceStart = now + timedelta(seconds=10)
-        for fleet in self.fleets:
-            fleetNumber = fleetNumber + 1
-            
-            startTime = sequenceStart + timedelta(
-                seconds = (WARNING_SECONDS/RaceManager.testSpeedRatio + 
-                        (START_SECONDS * fleetNumber)/RaceManager.testSpeedRatio))
-
-            self.updateFleetStartTime(fleet,startTime)
-        self.changed.fire("sequenceStartedWithWarning")
-
-
-    #
-    # Start our race sequence without a warning (i.e. class start)
+    # Start our race sequence in ten seconds (class flag start). Each fleet
+    # starts START_SECONDS after the previous one.
     #
     def startRaceSequenceWithoutWarning(self):
         logging.info("Start sequence without warning (class flag start)")
@@ -405,15 +381,15 @@ class RaceManager:
         
         
 
-        # if this is the last (or only) fleet, set its start time to be six
-        # minutes from now
+        # if this is the last (or only) fleet, set its start time to be
+        # START_SECONDS + 1 minute from now
         if fleetToRecall == self.fleets[-1]:
             logging.info("General recall last fleet")
             self.updateFleetStartTime(fleetToRecall,datetime.now()
                                  + timedelta(seconds=(START_SECONDS+LAST_START_GENERAL_RECALL_DELAY)/RaceManager.testSpeedRatio))
 
         # otherwise kick the fleet to be the back of the queue,
-        # with a start time five minutes after the last fleet
+        # with a start time START_SECONDS after the last fleet
         else:
             
             self.removeFleet(fleetToRecall)
