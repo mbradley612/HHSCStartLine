@@ -9,7 +9,7 @@ from screenui.audio import AudioManager
 from persistence.recovery import RaceRecoveryManager
 from lightsui.hardware import LIGHT_OFF, LIGHT_ON
 
-import threading 
+import threading
 import logging
 import sys
 
@@ -26,10 +26,10 @@ import pickle
 
 #
 # LightsController uses the EasyDaqUSBRelay to control the hardware lights. It refreshes the lights every
-# 500 milliseconds until all fleets have started. 
+# 500 milliseconds until all fleets have started.
 #
 class LightsController():
-    
+
     def __init__(self, tkRoot,easyDaqRelay,raceManager):
         self.tkRoot = tkRoot
         self.easyDaqRelay = easyDaqRelay
@@ -37,57 +37,57 @@ class LightsController():
         # we start assuming that our lights are off
         self.currentLights = [LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
         self.wireController()
-        
+
         self.updateTimer = None
-        
+
     def wireController(self):
-        
-        
+
+
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
         self.raceManager.changed.connect("sequenceStarted",self.handleSequenceStarted)
         self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
-        
-        
-        
-    
+
+
+
+
     def handleGeneralRecall(self,fleet):
         self.cancelUpdateTimer()
         self.updateLights()
-    
+
     def handleSequenceStarted(self):
         self.cancelUpdateTimer()
         self.updateLights()
-        
+
     def handleStartSequenceReset(self):
         self.cancelUpdateTimer()
         self.updateLights()
-        
+
     def cancelUpdateTimer(self):
         # if we have an update timer, cancel it. Note that if the update timer
         # has has already executed, the cancel has no effect and does not fail.
         if self.updateTimer:
             self.tkRoot.after_cancel(self.updateTimer)
-        
-    
+
+
     def calculateLightsDisplay(self):
         #
         # out default is no lights
         lights = [LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
-        
+
         # ask for the next fleet to start
         nextFleetToStart = self.raceManager.nextFleetToStart()
-        
+
         # if we have a fleet to start
         if nextFleetToStart:
             secondsToStart = -1 * nextFleetToStart.adjustedDeltaSecondsToStartTime()
-            
+
             # The sequence always begins with a ten second prep before the first
             # horn, so seconds to start is briefly larger than the sequence
             # length (e.g. 190 for a 3 minute start). No lights are shown then;
             # the countdown lights only appear once the sequence proper starts.
             if secondsToStart > self.raceManager.startSeconds:
                 return lights
-            
+
             # One light is shown for each full minute until the start (capped at
             # five). This works for both the 3 and 5 minute start sequences,
             # e.g. at 3 minutes to go there are 3 lights on.
@@ -96,7 +96,7 @@ class LightsController():
             # 0 seconds: lights out
             minutesToStart = -(-secondsToStart // 60)
             lightsOn = min(5, int(minutesToStart))
-            
+
             if 0 < secondsToStart <= 30:
                 # last half minute: flash the first light on and off
                 if (int(secondsToStart * 2) % 2 == 0):
@@ -105,88 +105,88 @@ class LightsController():
                 lights = [LIGHT_ON] * lightsOn + [LIGHT_OFF] * (5 - lightsOn)
             else:
                 lights = [LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF]
-            
+
         return lights
-    
-    
-                 
-    
+
+
+
+
     def updateLights(self):
-        
+
         newLights = self.calculateLightsDisplay()
-        
+
         if newLights != self.currentLights:
             self.easyDaqRelay.sendRelayCommand(newLights)
             self.currentLights = newLights
-        
+
         # check that we still have a fleet to start, if so,
         # calculate the time until our next change
-        
+
         if self.raceManager.nextFleetToStart():
             # make sure we update idle tasks so that the screen updates. This is particularly important in speedy mode
             self.tkRoot.update_idletasks()
-            
+
             self.updateTimer = self.tkRoot.after(500, self.updateLights)
-            
+
         # if we don't have a race to start any more, set our lights to 0 and don't update ourselves again
         else:
             self.easyDaqRelay.sendRelayCommand([LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF])
-        
-           
-        
+
+
+
     def start(self):
-        self.easyDaqRelay.start()     
-                
-    
-    
-        
-    
-    
+        self.easyDaqRelay.start()
+
+
+
+
+
+
 
 #
 # GunController uses the AudioManager to play a Wav file as the race "gun".
 # It does this in response to events from the race manager when races change
 # during the start sequence or when boats finish. It uses the Tk root
-# to provide an event scheduler. 
+# to provide an event scheduler.
 #
 class GunController():
-    
+
     def __init__(self, tkRoot, audioManager, raceManager):
         self.tkRoot = tkRoot
         self.audioManager = audioManager
         self.raceManager = raceManager
         self.scheduledGuns = []
         self.wireController()
-        
+
     #
     # We wire the controller by registering with the race manager
     # for the events we are interested in
-    #   
+    #
     def wireController(self):
         self.raceManager.changed.connect("sequenceStarted",self.handleSequenceStarted)
         self.raceManager.changed.connect("generalRecall",self.handleGeneralRecall)
         self.raceManager.changed.connect("startSequenceReset",self.handleStartSequenceReset)
         self.raceManager.changed.connect("finishAdded", self.handleFinishAdded)
-        
+
     # issue #38
     # modified to separate single gun into start, finish and general gun. This allows us to have
     # different wav files with different volumes and lengths of horn.
     #
-        
+
     def fireStartGun(self):
         self.audioManager.queueClip("startgun")
-        
+
     def fireFinishGun(self):
         self.audioManager.queueClip("finishgun")
-        
+
     def fireGun(self):
         self.audioManager.queueClip("gun")
-        
-        
- 
+
+
+
     def soundWarning(self):
         self.audioManager.queueClip("warning")
-    
+
     #
     # millis is the time of the gun. The warning beeps are for the ten seconds prior to the gun
     #
@@ -199,35 +199,35 @@ class GunController():
         # if we give a final warning instead of a gun, schedule this
         if finalWarning:
             self.addSchedule(self.tkRoot.after(gunMillis, self.soundWarning))
-    
- 
+
+
     def scheduleStartGun(self,millis):
         logging.log(logging.DEBUG,"Scheduling gun for %d " % millis)
         scheduleId = self.tkRoot.after(millis, self.fireStartGun)
-        
+
         self.addSchedule(scheduleId)
-        
+
     def addSchedule(self,scheduleId):
         self.scheduledGuns.append(scheduleId)
-        
+
     def cancelSchedules(self):
         for aSchedule in self.scheduledGuns:
             self.tkRoot.after_cancel(aSchedule)
         self.scheduledGuns = []
-    
-    
-        
+
+
+
     def calculateGunMillisForFleetStart(self,aFleet, secondsBefore):
         # calculate seconds to start of fleet
-        # convert negative seconds to start to positive 
+        # convert negative seconds to start to positive
         secondsToStart = aFleet.deltaSecondsToStartTime()  * -1
-        
-        
+
+
         # check that the fleet is still in the future (for example if we are debugging)
         if secondsToStart > 0:
-            
+
             #
-            # to calculate the seconds to gun, we take the seconds to start 
+            # to calculate the seconds to gun, we take the seconds to start
             # and subtract the requested seconds before divided by the test speed ratio.
             #
             # For example, with a test speed ratio of 5, the seconds to start for the
@@ -242,39 +242,39 @@ class GunController():
             secondsToGun = secondsToStart - secondsBefore / RaceManager.testSpeedRatio
             logging.info("Seconds to start: %d, scheduling gun for %d seconds" % (secondsToStart,secondsToGun))
             gunMillis = int(1000*secondsToGun )
-            
+
             return gunMillis
-            
-            
-        
+
+
+
     def calculateGunTimesForFleetStart(self,aFleet, secondsBefore):
         return aFleet.adjustedTimeBeforeStart(secondsBefore)
-         
-        
-    
-                            
+
+
+
+
     def handleSequenceStarted(self):
         self.scheduleGunsForFutureFleetStarts()
-    
+
     def handleFinishAdded(self,aFinish):
         self.fireFinishGun()
-    
+
     def handleGeneralRecall(self,aFleet):
         self.fireStartGun()
         # we can't use our built in scheduleGun function because we then immediately cancel our schedules.
         self.tkRoot.after(2000,self.fireStartGun)
         self.cancelSchedules()
         self.scheduleGunsForFutureFleetStarts()
-        
-            
-        
+
+
+
     def handleStartSequenceReset(self):
         self.cancelSchedules()
-    
+
     def convertTimeToMillis(self, aTime):
         timeDelta =  aTime - datetime.datetime.now()
         return  int(timeDelta.total_seconds() * 1000)
-    
+
     def scheduleGunsForFutureFleetStarts(self):
         #
         # iterate over all of the fleets. If the fleet is not started, schedule guns for the fleey
@@ -288,18 +288,18 @@ class GunController():
             if not aFleet.isStarted() :
                 for secondsBefore in hornSeconds:
                     gunScheduleTimes.add(aFleet.adjustedTimeBeforeStart(secondsBefore))
-                                     
+
         # now iterate over the schedules and schedule the beeps and guns
         logging.debug("millis in schedule: " + str(gunScheduleTimes))
         for gunScheduleTime in gunScheduleTimes:
-                # only schedule guns for the future, not the past. 
+                # only schedule guns for the future, not the past.
                 gunMillis = self.convertTimeToMillis(gunScheduleTime)
                 if gunMillis > 0:
                     self.scheduleWarningBeeps(gunMillis)
-                
+
                     self.scheduleStartGun(gunMillis)
-            
-        
+
+
 class ScreenController():
     pass
 
@@ -313,24 +313,24 @@ class ScreenController():
         self.defaultFleetNames = defaultFleetNames
         # needed to pass to add fleet dialog
         self.fontSize = fontSize
-        
-        self.selectedFleet = None    
+
+        self.selectedFleet = None
         self.selectedFinish = None
-        
+
         self.fleetButtons=[]
         self.buildFleetManagerView()
-        
-        
+
+
         self.wireController()
         self.disableButtons()
-        
-        
-   
+
+
+
     def disableButtons(self):
         self.startLineFrame.disableRemoveFleetButton()
         self.startLineFrame.disableResetStartRaceSequenceButton()
-        
-    
+
+
 
     def wireController(self):
         self.raceManager.changed.connect("fleetAdded",self.handleFleetAdded)
@@ -340,13 +340,13 @@ class ScreenController():
         self.raceManager.changed.connect("finishRemoved",self.handleFinishRemoved)
         self.raceManager.changed.connect("finishChanged",self.handleFinishChanged)
         self.raceManager.changed.connect("sequenceStarted",self.handleSequenceStarted)
-        
+
         #
         # Need to change this from event based to refreshing as part of the update loop
         #
         if self.easyDaqRelay:
             self.easyDaqRelay.changed.connect("connectionStateChanged",self.handleConnectionStateChanged)
-        
+
         self.startLineFrame.addFleetButton.config(command=self.addFleetClicked)
         self.startLineFrame.removeFleetButton.config(command=self.removeFleetClicked)
         self.startLineFrame.fleetsTreeView.bind("<<TreeviewSelect>>",self.fleetSelectionChanged)
@@ -360,35 +360,35 @@ class ScreenController():
         self.startLineFrame.removeFinishButton.config(command=self.removeFinishClicked)
         self.startLineFrame.exitButton.config(command=self.exitClicked)
         self.startLineFrame.master.protocol("WM_DELETE_WINDOW",self.exitClicked)
-        # bind F1 to gun and finish clicked. 
+        # bind F1 to gun and finish clicked.
         # bind F2 to gun clicked
         # This is a useful keyboard shortcut and also provides support for additional HID
         # devices that are configured to keyboard events
-        
+
         self.startLineFrame.bind_all("<F1>",self.f1Pressed)
         self.startLineFrame.bind_all("<F2>",self.f2Pressed)
-        
-        
-        
+
+
+
     def buildFleetManagerView(self):
         # we build our tree
-           
+
         for fleet in self.raceManager.fleets:
             self.appendFleetToTreeView(fleet)
-    
-    
+
+
     def appendFleetToTreeView(self,aFleet):
         self.startLineFrame.fleetsTreeView.insert(
              parent="",
              index="end",
              iid = aFleet.fleetId,
              text = aFleet.name,
-             values=(self.renderDeltaToStartTime(aFleet),aFleet.status(self.raceManager.startSeconds)))  
-            
+             values=(self.renderDeltaToStartTime(aFleet),aFleet.status(self.raceManager.startSeconds)))
+
     def showAddFleetDialog(self):
         addFleetDialog = AddFleetDialog(self.startLineFrame,self.defaultFleetNames)
         # ... build the window ...
-        
+
         ## Set the focus on dialog window (needed on Windows)
         addFleetDialog.top.focus_set()
         ## Make sure events only go to our dialog
@@ -401,34 +401,34 @@ class ScreenController():
         ## Display the window and wait for it to close
         addFleetDialog.top.wait_window()
         return addFleetDialog.fleetName
-    
+
     def addFleetClicked(self):
         fleetName = self.showAddFleetDialog()
-        
+
         if fleetName:
             self.raceManager.createFleet(fleetName)
         self.updateButtonStates()
-        
+
     def removeFleetClicked(self):#
         # check we have a selected fleet
         if self.selectedFleet:
             self.raceManager.removeFleet(self.selectedFleet)
         self.updateButtonStates()
-            
+
     def startFiveMinuteSequenceClicked(self):
         self.raceManager.startRaceSequence()
         self.updateButtonStates()
-        
-    
+
+
     def startThreeMinuteSequenceClicked(self):
         self.raceManager.startRaceSequence(THREE_MINUTE_START_SECONDS)
         self.updateButtonStates()
-        
-        
+
+
     def generalRecallClicked(self):
         self.raceManager.generalRecall()
         self.updateButtonStates()
-        
+
     def gunClicked(self):
         self.audioManager.queueClip("gun")
 
@@ -438,110 +438,110 @@ class ScreenController():
         if result == 'yes':
             self.raceManager.resetStartSequence()
         self.updateButtonStates()
-           
-        
+
+
     def fleetSelectionChanged(self,event):
         item = self.startLineFrame.fleetsTreeView.selection()[0]
-        
+
         self.selectedFleet = self.raceManager.fleetWithId(item)
-        
+
         logging.debug("User has selected %s" % str(self.selectedFleet))
         self.updateButtonStates()
-        
+
     def finishSelectionChanged(self,event):
         item = self.startLineFrame.finishTreeView.selection()[0]
         self.selectedFinish = self.raceManager.finishWithId(item)
         self.updateButtonStates()
-        
+
     def f1Pressed(self,event):
         self.startLineFrame.gunAndFinishButton.invoke()
-        
+
     def f2Pressed(self,event):
         self.startLineFrame.gunButton.invoke()
-    
+
     def gunAndFinishClicked(self):
         logging.debug("Gun and finish clicked")
         self.raceManager.createFinish()
-        
+
     def removeFinishClicked(self):
         self.raceManager.removeFinish(self.selectedFinish)
         self.selectedFinish = None
-    
+
     def handleFleetAdded(self,aFleet):
         self.appendFleetToTreeView(aFleet)
         self.updateButtonStates()
-        
-    
+
+
     def handleFleetRemoved(self,aFleet):
         self.startLineFrame.fleetsTreeView.delete(aFleet.fleetId)
         self.selectedFleet=None
         self.updateButtonStates()
-    
-    
+
+
     def handleFleetChanged(self,aFleet):
         pass
-    
+
     def handleFinishAdded(self,aFinish):
         self.appendFinishToFinishTreeView(aFinish)
-        
+
     def handleFinishRemoved(self,aFinish):
         self.startLineFrame.finishTreeView.delete(aFinish.finishId)
-        
-    
+
+
     def handleFinishChanged(self,aFinish):
         # update the GUI for a finish
         self.startLineFrame.finishTreeView.item(aFinish.finishId,
             values=(self.renderFinishFleet(aFinish),self.renderFinishElapsedTime(aFinish)))
-    
+
     def buildFinishView(self):
         # we build our tree
-           
+
         for finish in self.raceManager.finishes:
             self.appendFinishToFinishTreeView(finish)
-            
+
     #
     # When the sequence starts, we create our fleet buttons
     #
     def handleSequenceStarted(self):
-        
+
         self.createFleetButtons()
-        
+
     def createFleetButtons(self):
-        
+
         for i in range(len(self.raceManager.fleets)):
             fleet = self.raceManager.fleets[i]
             buttonText = fleet.name.replace(" ","\n")
             fleetButton = self.startLineFrame.createFleetButton(buttonText,i)
-            
+
             # we're creating multiple lambdas within the same namespace.
             # This workaround comes from http://stackoverflow.com/questions/4236182/generate-tkinter-buttons-dynamically
-            
+
             fleetButton.configure(command=lambda fleet=fleet: self.handleFleetButtonClickedForFleet(fleet=fleet))
             self.fleetButtons.append(fleetButton)
-            
-            
+
+
     def enableFleetButtons(self):
         for button in self.fleetButtons:
             button['state'] = tk.NORMAL
-            
+
     def disableFleetButtons(self):
         for button in self.fleetButtons:
             button['state'] = tk.DISABLED
-        
-    
+
+
     def handleFleetButtonClickedForFleet(self,fleet):
         logging.info("Fleet button " + fleet.name + " clicked")
         if self.selectedFinish:
             self.selectedFinish.fleet = fleet
             self.raceManager.updateFinish(self.selectedFinish)
             self.selectFinishInTreeView(self.nextFinishWithoutFleetAfter(self.selectedFinish))
-    
+
     def nextFinishWithoutFleetAfter(self,finish):
         indexOfFinish = self.raceManager.finishes.index(finish)
         for i in range(indexOfFinish+1,len(self.raceManager.finishes)):
             if not self.raceManager.finishes[i].hasFleet():
                 return self.raceManager.finishes[i]
-            
+
         return None
     #
     def appendFinishToFinishTreeView(self,aFinish):
@@ -551,25 +551,25 @@ class ScreenController():
              iid = aFinish.finishId,
              text = self.renderFinishTime(aFinish),
              values=(self.renderFinishFleet(aFinish),self.renderFinishElapsedTime(aFinish)))
-        
+
         # the call up update_idletasks is needed to make sure that the
         # treeview is fully populated. Without this line, on Active Python 2.7.2.5
-        # the scroll to the bottom only works every other item. 
+        # the scroll to the bottom only works every other item.
         self.startLineFrame.update_idletasks()
         self.startLineFrame.finishTreeView.see(finishItem)
-        
+
         #
-        # if we don't already have a selected finish, 
+        # if we don't already have a selected finish,
         # or select the fleet just added
         #
         if not self.selectedFinish or self.selectedFinish.hasFleet():
             self.selectFinishInTreeView(aFinish)
-    
-    
+
+
     #
-    # This isn't quite right. 
+    # This isn't quite right.
     #
-    
+
     def selectFinishInTreeView(self,aFinish):
         # if we do have a finish
         if aFinish:
@@ -581,7 +581,7 @@ class ScreenController():
             selectedItems = self.startLineFrame.finishTreeView.selection()
             self.startLineFrame.finishTreeView.selection_set(selectedItems)
         self.updateButtonStates()
-    
+
     #
     # Render the fleet of a finish
     #
@@ -591,29 +591,29 @@ class ScreenController():
             return aFinish.fleet.name
         else:
             return "-"
-        
+
     #
     # Render the finish time. This is the clock time of the finish
     #
     def renderFinishTime(self,finish):
         return finish.finishTime.strftime("%H:%M:%S")
-    
+
     def renderFinishElapsedTime(self,finish):
-        # if we have a fleet, calculate the delta from the finish time to the 
+        # if we have a fleet, calculate the delta from the finish time to the
         # start time of the fleet.
         if finish.hasFleet():
-            
-            
-            
+
+
+
             return str(int(finish.elapsedFinishTimeDelta().total_seconds()))
         #
         # if we don't have a fleet, we can't calculate the elapsed time
         #
         else:
-        
+
             return "-"
-        
-            
+
+
     #
     # event handler for the connection state of the easyDaqRelay changing
     #
@@ -621,7 +621,7 @@ class ScreenController():
         # update the Tk string variable with the session state description
         # from the EasyDaq relay object
         self.startLineFrame.after(0, self.updateSessionStateDescription)
-        
+
     def updateSessionStateDescription(self):
         if self.easyDaqRelay:
             while self.easyDaqRelay.sessionStateDescriptionQueue.qsize():
@@ -629,10 +629,10 @@ class ScreenController():
                     message = self.easyDaqRelay.sessionStateDescriptionQueue.get_nowait()
                     self.startLineFrame.connectionStatus.set(message)
                 except queue.Empty:
-                    # this should never happen. 
+                    # this should never happen.
                     message = "Lights: No message available"
-                    
-    
+
+
     #
     # Calculate the integer adjusted seconds to start time. This is counter-intuitive: the
     # effect of the int function is to subtract 1 second almost all of the time. If the
@@ -643,103 +643,103 @@ class ScreenController():
     #
     def integerAdjustedDeltaSecondsToFleetStartTime(self,aFleet):
         return int(aFleet.adjustedDeltaSecondsToStartTime()-1)
-    
+
     def renderDeltaToStartTime(self, aFleet):
         if aFleet.hasStartTime():
             deltaToStartTimeSeconds = int(self.integerAdjustedDeltaSecondsToFleetStartTime(aFleet))
-            
+
             hmsString = str(datetime.timedelta(seconds=(abs(deltaToStartTimeSeconds))))
-            
+
             if deltaToStartTimeSeconds < 0:
-                return "-" +  hmsString 
+                return "-" +  hmsString
             else:
                 return hmsString
-        
+
         else:
             return "-"
-        
-    
-    
+
+
+
     def renderDeltaSecondsToStartTime(self, aFleet):
         if aFleet.hasStartTime():
             return self.integerAdjustedDeltaSecondsToFleetStartTime(aFleet)
-            
-            
-            
+
+
+
         else:
             return "-"
-        
-    
+
+
     def refreshFleetsView(self):
         #
         # iterate over all of our fleets. Read the start time delta and
         # and status, and update the fleetsTreeView with their values
         #
-        
+
         for aFleet in self.raceManager.fleets:
-            
+
             self.startLineFrame.fleetsTreeView.item(
                         aFleet.fleetId,
-                        
+
                         values=[self.renderDeltaToStartTime(aFleet), self.renderDeltaSecondsToStartTime(aFleet),aFleet.status(self.raceManager.startSeconds)])
-        
-       
-        
+
+
+
         #
         # Ask our race manager if we have a started fleet and last fleet started was started less than 30 seconds ago
         #
-            
+
         if self.raceManager.hasStartedFleet() and self.raceManager.lastFleetStarted().adjustedDeltaSecondsToStartTime() < 30.0:
             self.startLineFrame.enableGeneralRecallButton()
         else:
             self.startLineFrame.disableGeneralRecallButton()
-    
-            
-                  
+
+
+
         #
         # Update our clock
         #
         self.startLineFrame.clockStringVar.set(datetime.datetime.now().strftime("%H:%M:%S"))
-        
+
         #
         # Update the connection status
         #
         self.updateSessionStateDescription()
-        
+
         #
         # Update the wav file queue depth
         #
         self.updateGunQueueLength()
-    
+
         #
         # Schedule to update this view again in 250 milliseonds
         #
         self.startLineFrame.after(250, self.refreshFleetsView)
-    
-    
+
+
     #
     # This method enables and disables buttons. Call it after handling a button event
     #
     def updateButtonStates(self):
         #
         # Logic for enabling and disabling buttons
-        #   
-        if self.raceManager.hasSequenceStarted() or self.raceManager.hasStartedFleet(): 
-            
+        #
+        if self.raceManager.hasSequenceStarted() or self.raceManager.hasStartedFleet():
+
             self.startLineFrame.enableResetStartRaceSequenceButton()
             self.startLineFrame.disableAddFleetButton()
             self.startLineFrame.disableRemoveFleetButton()
             self.startLineFrame.disableStartSequenceButtons()
-           
+
         else:
             self.startLineFrame.enableAddFleetButton()
             self.startLineFrame.disableResetStartRaceSequenceButton()
-            
-            
+
+
             if self.raceManager.hasFleets():
-            
-            
-                
+
+
+
                 self.startLineFrame.enableStartSequenceButtons()
                 if self.selectedFleet:
                     self.startLineFrame.enableRemoveFleetButton()
@@ -748,28 +748,28 @@ class ScreenController():
             else:
                 self.startLineFrame.disableRemoveFleetButton()
                 self.startLineFrame.disableStartSequenceButtons()
-  
-    
+
+
         if self.selectedFinish:
             self.enableFleetButtons()
         else:
             self.disableFleetButtons()
     #
     # start the controller. Every 500 milliseconds we refresh the start time and the status
-    # of the race manager 
+    # of the race manager
     #
     def start(self):
         # if we have recovered, we need to build our finish view and our fleet buttons
         self.buildFinishView()
         self.createFleetButtons()
-        
+
         self.startLineFrame.after(500, self.refreshFleetsView)
-        
+
     #
     # The gun queue has changed. Update the UI to show the length of the gun queue
     #
     def updateGunQueueLength(self):
-        
+
         self.startLineFrame.gunQueueCount.set("Gun Q : %d " % self.audioManager.queueLength())
 
 
@@ -777,18 +777,17 @@ class ScreenController():
         result = messagebox.askquestion("Exit","Are you sure?", icon="warning")
         if result == 'yes':
             self.shutdown()
-        
+
     def shutdown(self):
-        
+
         logging.info("Shutting down")
         if self.easyDaqRelay:
             self.easyDaqRelay.sendRelayCommand([LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF, LIGHT_OFF])
             self.easyDaqRelay.stop()
-        
+
         # delete our recovery file if we have one
         if self.recoveryManager:
             self.recoveryManager.stop()
-        
+
         # and then quit after a second
         self.startLineFrame.after(1000,self.startLineFrame.master.quit)
-
